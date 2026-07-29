@@ -8,6 +8,7 @@ export type Project = {
   number: string
   title: string
   item: 'moss' | 'book' | 'minecart' | 'jukebox'
+  artifact: string
   status: string
   summary: string
   contribution: string
@@ -31,6 +32,7 @@ export const projects: Project[] = [
     number: 'ACTIVE WORLD',
     title: 'Stretchy',
     item: 'moss',
+    artifact: 'artifact-stretchy.webp',
     status: 'Active build · public preview',
     summary: 'A local-first evidence and investigation system built for very large, mixed-media corpora.',
     contribution: 'Built solo across the Rust scanner, Python control plane and workers, durable Temporal investigations, retrieval, evidence graph, telemetry, security boundaries, and editorial command centre.',
@@ -45,6 +47,7 @@ export const projects: Project[] = [
     number: 'GDG BUILD',
     title: 'UltraChat',
     item: 'book',
+    artifact: 'artifact-ultrachat.webp',
     status: 'Collaborative · GDG VIT',
     summary: 'A Discord knowledge companion that turns a server’s conversation history into summaries and searchable context.',
     contribution: 'Worked across collection, long-text summarisation, RAG queries, vector storage, Discord commands, Docker setup, prompts, and backend integration; later explored a separate Go + DynamoDB backend for an AWS project.',
@@ -59,6 +62,7 @@ export const projects: Project[] = [
     number: 'GDG BUILD',
     title: 'Kargo',
     item: 'minecart',
+    artifact: 'artifact-kargo.webp',
     status: 'Collaborative · GDG VIT',
     summary: 'A platform for taking repositories through container configuration and into managed application deployments.',
     contribution: 'Contributed to the AI repository-analysis path: shallow cloning, extension-aware source selection, codebase summarisation, and extraction of ports and persistent-volume signals used to propose Docker configuration.',
@@ -74,6 +78,7 @@ export const projects: Project[] = [
     number: 'FIRST TOOL',
     title: 'The school Discord bot',
     item: 'jukebox',
+    artifact: 'artifact-kermit.webp',
     status: 'Personal · private archive',
     summary: 'A Grade 11 experiment that became the bot Noel and his friends actually used during remote school.',
     contribution: 'Learned Python through music commands, games, moderation, and reminders that posted the correct online-class links. The code stays private; the memory matters more than the repository.',
