@@ -1,716 +1,632 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { createContext, useContext, useEffect, useRef, useState, type ComponentProps, type CSSProperties, type MouseEvent, type PointerEvent } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import {
-  ArrowDown,
+  ArrowLeft,
   ArrowRight,
-  ArrowUpRight,
-  Check,
   ChevronDown,
-  CircleDot,
+  Compass,
   ExternalLink,
   Github,
-  Linkedin,
   Mail,
   MapPin,
   Play,
-  ShieldCheck,
-  Sparkles,
   Volume2,
   VolumeX,
   X,
-  Zap,
 } from 'lucide-react'
-import { projects, sections, socialLinks, stretchySystems, type Project } from './content'
+import { projects, socialLinks, stretchySystems } from './content'
 
-type Toast = { title: string; detail: string } | null
+const baseAsset = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`
+const routerBase = import.meta.env.BASE_URL.replace(/\/$/, '')
 
-const achievements = [
-  null,
-  { title: 'Getting to know you', detail: 'Met the player behind the builds.' },
-  { title: 'Deep dark expedition', detail: 'Entered Stretchy’s evidence city.' },
-  { title: 'Acquire hardware', detail: 'Opened the collaborative workshop.' },
-  { title: 'Into the depths', detail: 'Found the research below bedrock.' },
-  { title: 'Hero of the village', detail: 'Reached the community that shaped the journey.' },
-  { title: 'The End?', detail: 'A new connection is another beginning.' },
-]
+type RouterValue = { pathname: string; navigate: (to: string) => void }
+const RouterContext = createContext<RouterValue | null>(null)
 
-function useReducedMotion() {
-  const [reduced, setReduced] = useState(false)
+function routeFromWindow() {
+  const raw = window.location.pathname.startsWith(routerBase) ? window.location.pathname.slice(routerBase.length) : window.location.pathname
+  return raw || '/'
+}
+
+function PortfolioRouter({ children }: { children: React.ReactNode }) {
+  const [pathname, setPathname] = useState(routeFromWindow)
   useEffect(() => {
-    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const update = () => setReduced(media.matches)
-    update()
-    media.addEventListener('change', update)
-    return () => media.removeEventListener('change', update)
+    const onPopState = () => setPathname(routeFromWindow())
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
   }, [])
-  return reduced
+  const navigate = (to: string) => {
+    const [nextPath, hash] = to.split('#')
+    window.history.pushState({}, '', `${routerBase}${nextPath === '/' ? '/' : nextPath}${hash ? `#${hash}` : ''}`)
+    setPathname(nextPath || '/')
+    if (hash) window.setTimeout(() => document.getElementById(hash)?.scrollIntoView(), 40)
+  }
+  return <RouterContext.Provider value={{ pathname, navigate }}>{children}</RouterContext.Provider>
 }
 
-const worldImages = [
-  'world-overworld-v2.webp',
-  'world-overworld-v2.webp',
-  'world-ancient-city-v2.webp',
-  'world-workshop-v2.webp',
-  'world-workshop-v2.webp',
-  'world-village-portal-v2.webp',
-  'world-village-portal-v2.webp',
-]
+function useRouter() {
+  const router = useContext(RouterContext)
+  if (!router) throw new Error('Portfolio router is missing')
+  return router
+}
 
-function CinematicWorld({ active, reducedMotion }: { active: number; reducedMotion: boolean }) {
-  const image = `${import.meta.env.BASE_URL}assets/${worldImages[active] ?? worldImages[0]}`
+function useLocation() { return { pathname: useRouter().pathname } }
+function useNavigate() { return useRouter().navigate }
+
+type LinkProps = Omit<ComponentProps<'a'>, 'href'> & { to: string }
+function Link({ to, onClick, ...props }: LinkProps) {
+  const { navigate } = useRouter()
+  const href = `${routerBase}${to === '/' ? '/' : to}`
+  const follow = (event: MouseEvent<HTMLAnchorElement>) => {
+    onClick?.(event)
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    event.preventDefault()
+    navigate(to)
+  }
+  return <a {...props} href={href} onClick={follow} />
+}
+
+function NavLink({ to, end = false, className = '', ...props }: LinkProps & { end?: boolean }) {
+  const { pathname } = useRouter()
+  const active = end ? pathname === to : pathname.startsWith(to)
+  return <Link {...props} to={to} className={`${className} ${active ? 'active' : ''}`.trim()} />
+}
+
+const worlds = [
+  { to: '/projects/stretchy', eyebrow: 'ACTIVE WORLD', title: 'Stretchy', note: 'An evidence city', artifact: 'artifact-stretchy.webp', tone: 'moss' },
+  { to: '/projects', eyebrow: '4 BUILDS', title: 'The Workshop', note: 'Systems and tools', artifact: 'artifact-kargo.webp', tone: 'copper' },
+  { to: '/research', eyebrow: 'EXPERIMENT', title: 'Below Bedrock', note: 'Arachne + PhishGuard', artifact: 'artifact-arachne.webp', tone: 'sculk' },
+  { to: '/community', eyebrow: 'MULTIPLAYER', title: 'GDG Village', note: 'Events and people', artifact: 'artifact-kermit.webp', tone: 'sun' },
+] as const
+
+const navigation = [
+  ['/', 'Spawn', 'A sunlit introduction'],
+  ['/player', 'Player', 'The person behind the builds'],
+  ['/projects', 'Workshop', 'Projects and case studies'],
+  ['/research', 'Below bedrock', 'Crawler and graph research'],
+  ['/community', 'GDG village', 'Teaching, events, community'],
+  ['/contact', 'The portal', 'Start a conversation'],
+] as const
+
+function Artifact({ file, alt = '' }: { file: string; alt?: string }) {
+  return <img className="artifact" src={baseAsset(file)} alt={alt} />
+}
+
+let loadedInThisVisit = false
+
+function TerrainLoader() {
+  const reduced = useReducedMotion()
+  const [visible, setVisible] = useState(() => {
+    try {
+      return !loadedInThisVisit && sessionStorage.getItem('noel-world-loaded') !== 'yes'
+    } catch {
+      return !loadedInThisVisit
+    }
+  })
+
+  useEffect(() => {
+    if (!visible) return
+    const timeout = window.setTimeout(() => {
+      loadedInThisVisit = true
+      try { sessionStorage.setItem('noel-world-loaded', 'yes') } catch { /* storage can be unavailable */ }
+      setVisible(false)
+    }, reduced ? 350 : 1950)
+    return () => window.clearTimeout(timeout)
+  }, [reduced, visible])
+
   return (
-    <div className="cinematic-world" aria-hidden="true">
-      <AnimatePresence mode="sync">
-        <motion.img
-          key={image}
-          src={image}
-          alt=""
-          initial={{ opacity: 0, scale: reducedMotion ? 1 : 1.025 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: reducedMotion ? 0.01 : 1.1, ease: 'easeOut' }}
-        />
-      </AnimatePresence>
-      <div className="world-vignette" />
-      <div className="world-grain" />
-      <div className="world-embers"><i /><i /><i /><i /><i /><i /></div>
-    </div>
+    <AnimatePresence>
+      {visible && (
+        <motion.div className="terrain-loader" exit={{ opacity: 0 }} transition={{ duration: 0.35 }}>
+          <div className="dirt-noise" aria-hidden="true" />
+          <div className="terrain-status" role="status">
+            <strong>Loading terrain...</strong>
+            <div className="terrain-progress"><motion.i initial={{ width: '0%' }} animate={{ width: '100%' }} transition={{ duration: reduced ? 0.2 : 1.65, ease: 'linear' }} /></div>
+            <span>Preparing Noel's world</span>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 
-function ProjectArtifact({ project, className = '' }: { project: Pick<Project, 'title' | 'artifact'>; className?: string }) {
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo({ top: 0 })
+  }, [pathname])
+  return null
+}
+
+function PixelAtmosphere({ count = 16 }: { count?: number }) {
+  return <div className="pixel-atmosphere" aria-hidden="true">{Array.from({ length: count }, (_, index) => <i key={index} style={{ '--i': index } as CSSProperties} />)}</div>
+}
+
+function CompassMenu({ open, close }: { open: boolean; close: () => void }) {
   return (
-    <img
-      className={`project-artifact ${className}`}
-      src={`${import.meta.env.BASE_URL}assets/${project.artifact}`}
-      alt=""
-      aria-hidden="true"
-    />
+    <AnimatePresence>
+      {open && (
+        <motion.div className="compass-menu" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className="compass-menu__map" initial={{ scale: 0.94, y: 18 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.97, y: 8 }} transition={{ type: 'spring', stiffness: 260, damping: 24 }}>
+            <div className="menu-heading"><span>WORLD MAP</span><button onClick={close} aria-label="Close world map"><X /></button></div>
+            <div className="map-route" aria-hidden="true"><i /><i /><i /><i /><i /><i /></div>
+            <nav aria-label="Portfolio worlds">
+              {navigation.map(([to, title, note], index) => (
+                <NavLink to={to} key={to} end={to === '/'} onClick={close} style={{ '--route': index } as CSSProperties}>
+                  <span>{String(index + 1).padStart(2, '0')}</span><strong>{title}</strong><small>{note}</small><ArrowRight />
+                </NavLink>
+              ))}
+            </nav>
+            <p>Tip: use W / S on the spawn screen to choose a world.</p>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 
-function StatusTag({ children, tone = 'green' }: { children: React.ReactNode; tone?: 'green' | 'amber' | 'purple' }) {
-  return <span className={`status-tag status-tag--${tone}`}><span className="status-pip" />{children}</span>
+function FloatingHUD({ sound, onSound }: { sound: boolean; onSound: () => void }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const location = useLocation()
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [location.pathname])
+
+  return (
+    <>
+      <Link className="floating-name" to="/" aria-label="Noel Alex, back to spawn">
+        <span className="avatar-block"><i /><b /></span>
+        <span><strong>NOEL ALEX</strong><small><i /> open to opportunities</small></span>
+      </Link>
+      <div className="floating-controls">
+        <button onClick={onSound} aria-label={sound ? 'Mute ambient music' : 'Play ambient music'} title={sound ? 'Mute ambient music' : 'Play ambient music'}>
+          {sound ? <Volume2 /> : <VolumeX />}<span>{sound ? 'Ambient on' : 'Ambient off'}</span>
+        </button>
+        <button className="compass-button" onClick={() => setMenuOpen(true)} aria-label="Open world map"><Compass /><span>World map</span></button>
+      </div>
+      <CompassMenu open={menuOpen} close={() => setMenuOpen(false)} />
+    </>
+  )
 }
 
-function Reveal({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+function PageFrame({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  const reduced = useReducedMotion()
   return (
-    <motion.div
-      className={className}
-      initial={{ opacity: 0, y: 28 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.15 }}
-      transition={{ duration: 0.65, ease: [0.2, 0.8, 0.2, 1] }}
+    <motion.main
+      id="main-content"
+      className={`page ${className}`}
+      initial={reduced ? { opacity: 0 } : { opacity: 0, clipPath: 'inset(0 0 8% 0)', y: 12 }}
+      animate={{ opacity: 1, clipPath: 'inset(0 0 0% 0)', y: 0 }}
+      exit={reduced ? { opacity: 0 } : { opacity: 0, y: -10 }}
+      transition={{ duration: reduced ? 0.15 : 0.55, ease: [0.22, 1, 0.36, 1] }}
     >
+      {children}
+    </motion.main>
+  )
+}
+
+function Reveal({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  return (
+    <motion.div className={className} initial={{ opacity: 0, y: 35 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}>
       {children}
     </motion.div>
   )
 }
 
-const workbenchProjects = [
-  {
-    slug: 'stretchy',
-    title: 'Stretchy',
-    artifact: 'artifact-stretchy.webp',
-    itemName: 'Evidence chest',
-    target: 'stretchy',
-    label: 'SOLO · ACTIVE WORLD',
-    summary: 'A local-first investigation system where every useful answer has to survive a walk back to its source.',
-    contribution: 'Rust scanning, typed Python services, durable Temporal investigations, hybrid retrieval, bounded evidence graphs, review, reporting, security, and the editorial interface.',
-    steps: ['Inventory sources', 'Bind provenance', 'Retrieve evidence', 'Human review'],
-    result: 'OUTPUT · an inspectable finding with a source trail',
-  },
-  {
-    slug: 'ultrachat',
-    title: 'UltraChat',
-    artifact: 'artifact-ultrachat.webp',
-    itemName: 'Memory book',
-    target: 'ultrachat-dossier',
-    label: 'GDG VIT · COLLABORATIVE',
-    summary: 'A Discord knowledge companion that turns noisy server history into summaries and searchable context.',
-    contribution: 'Collection and commands, long-text summarisation, vector storage, RAG queries, prompts, backend integration, Docker—and a later personal Go + DynamoDB variant.',
-    steps: ['Collect messages', 'Compact history', 'Index context', 'Retrieve answer'],
-    result: 'OUTPUT · the server remembers what people actually said',
-  },
-  {
-    slug: 'kargo',
-    title: 'Kargo',
-    artifact: 'artifact-kargo.webp',
-    itemName: 'Copper cargo cart',
-    target: 'kargo-dossier',
-    label: 'GDG VIT · COLLABORATIVE',
-    summary: 'A deployment platform that carries a repository toward container configuration and managed infrastructure.',
-    contribution: 'Bounded cloning, extension-aware source selection, repository mapping, code summarisation, port discovery, and persistent-volume signal extraction.',
-    steps: ['Clone repository', 'Map codebase', 'Find runtime clues', 'Propose config'],
-    result: 'OUTPUT · Docker configuration backed by repository evidence',
-  },
-  {
-    slug: 'arachne',
-    title: 'Arachne',
-    artifact: 'artifact-arachne.webp',
-    itemName: 'Crawler charm',
-    target: 'research',
-    label: 'SOLO · SYSTEMS EXPERIMENT',
-    summary: 'A horizontally scalable Rust crawler that became the collection instrument for a phishing-site graph experiment.',
-    contribution: 'Coordinator and worker boundaries, Kafka queues, ScyllaDB persistence, DOM collection, graph construction, and the honest evaluation of where the detector failed.',
-    steps: ['Queue URLs', 'Dispatch workers', 'Persist DOMs', 'Score graphs'],
-    result: 'OUTPUT · 68,175 examples and a very important caveat',
-  },
+function Scene({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  const handlePointer = (event: PointerEvent<HTMLElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect()
+    const x = (event.clientX - bounds.left) / bounds.width - 0.5
+    const y = (event.clientY - bounds.top) / bounds.height - 0.5
+    event.currentTarget.style.setProperty('--mx', `${x}`)
+    event.currentTarget.style.setProperty('--my', `${y}`)
+  }
+  return <section className={`scene ${className}`} onPointerMove={handlePointer}>{children}</section>
+}
+
+function HomePage() {
+  const [selected, setSelected] = useState(0)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => {
+      if (['w', 'a', 'ArrowUp', 'ArrowLeft'].includes(event.key)) {
+        event.preventDefault(); setSelected((value) => (value + worlds.length - 1) % worlds.length)
+      }
+      if (['s', 'd', 'ArrowDown', 'ArrowRight'].includes(event.key)) {
+        event.preventDefault(); setSelected((value) => (value + 1) % worlds.length)
+      }
+      if (event.key === 'Enter') navigate(worlds[selected].to)
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [navigate, selected])
+
+  return (
+    <PageFrame className="spawn-page">
+      <Scene className="spawn-scene">
+        <div className="sky-glow" aria-hidden="true" />
+        <div className="block-cloud cloud-one" aria-hidden="true"><i /><i /><i /></div>
+        <div className="block-cloud cloud-two" aria-hidden="true"><i /><i /></div>
+        <PixelAtmosphere count={22} />
+        <div className="spawn-landscape" aria-hidden="true"><i /><i /><i /><i /></div>
+
+        <div className="spawn-copy">
+          <motion.span className="eyebrow" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35 }}>JAVA EDITION / VIT VELLORE / 2027</motion.span>
+          <motion.h1 initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.8 }}>
+            I build curious<br /><em>worlds for people.</em>
+          </motion.h1>
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }}>
+            I'm Noel Alex: data science student, systems builder, researcher, community leader, and enthusiastic over-engineer of Minecraft servers.
+          </motion.p>
+          <motion.div className="hero-actions" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}>
+            <Link className="primary-action" to="/projects"><span>Explore my builds</span><ArrowRight /></Link>
+            <Link className="text-action" to="/player">Meet the player <ArrowRight /></Link>
+          </motion.div>
+          <motion.small className="availability" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}><i /> Remote / Riyadh / Abu Dhabi / Dubai / US</motion.small>
+        </div>
+
+        <motion.div className="cave-window" initial={{ opacity: 0, scale: 0.93, rotate: 1.5 }} animate={{ opacity: 1, scale: 1, rotate: 0 }} transition={{ delay: 0.35, duration: 0.9 }}>
+          <div className="window-image"><img src={baseAsset('minecraft-cave.webp')} alt="A vast, sunlit cave in Noel's Minecraft world" /></div>
+          <div className="window-tag"><span>NOEL'S SURVIVAL WORLD</span><strong>Some ideas need a bigger cave.</strong></div>
+          <i className="window-depth" aria-hidden="true" />
+        </motion.div>
+
+        <div className="world-dock" aria-label="Choose a world">
+          <div className="dock-intro"><span>SELECT WORLD</span><small><kbd>W</kbd><kbd>S</kbd> then Enter</small></div>
+          <div className="world-cards">
+            {worlds.map((world, index) => (
+              <Link
+                className={`world-card world-card--${world.tone} ${selected === index ? 'is-selected' : ''}`}
+                to={world.to}
+                key={world.to}
+                onMouseEnter={() => setSelected(index)}
+                onFocus={() => setSelected(index)}
+              >
+                <span className="world-number">0{index + 1}</span>
+                <Artifact file={world.artifact} />
+                <span className="world-card__copy"><small>{world.eyebrow}</small><strong>{world.title}</strong><em>{world.note}</em></span>
+                <ArrowRight />
+              </Link>
+            ))}
+          </div>
+        </div>
+        <a className="scroll-cue" href="#spawn-after"><span>Continue the journey</span><ChevronDown /></a>
+      </Scene>
+
+      <section id="spawn-after" className="spawn-after">
+        <Reveal className="manifesto">
+          <span className="eyebrow">THE PLAY STYLE</span>
+          <h2>Systems thinking.<br />Research instincts.<br /><em>Multiplayer energy.</em></h2>
+          <p>I like hard problems with real moving parts. The work gets technical; the reason for doing it stays human.</p>
+        </Reveal>
+        <Reveal className="spawn-trail" delay={0.12}>
+          <article><span>01</span><strong>Explore</strong><p>Go deep enough to understand the terrain, not just name it.</p></article>
+          <article><span>02</span><strong>Build</strong><p>Turn uncertainty into a working system and learn from what breaks.</p></article>
+          <article><span>03</span><strong>Bring people</strong><p>Teach, organise, collaborate, and make the party stronger.</p></article>
+        </Reveal>
+      </section>
+    </PageFrame>
+  )
+}
+
+function SectionIntro({ kicker, title, copy }: { kicker: string; title: React.ReactNode; copy: string }) {
+  return <header className="section-intro"><span className="eyebrow">{kicker}</span><h1>{title}</h1><p>{copy}</p></header>
+}
+
+function PlayerPage() {
+  return (
+    <PageFrame className="player-page">
+      <PixelAtmosphere count={12} />
+      <div className="page-shell">
+        <SectionIntro kicker="PLAYER PROFILE / NOOEEELLLL123" title={<>Curiosity starts the build.<br /><em>People make it matter.</em></>} copy="Noel grew up in Riyadh and now studies Computer Science with a specialization in Data Science at VIT Vellore, graduating in 2027." />
+        <section className="player-story">
+          <Reveal className="portal-memory">
+            <img src={baseAsset('minecraft-end-portal.webp')} alt="Noel and friends in a stronghold before fighting the Ender Dragon" />
+            <figcaption><span>PARTY MEMORY / JAVA SURVIVAL</span><strong>Before the Ender Dragon.</strong><p>The best worlds are the ones friends build together.</p></figcaption>
+          </Reveal>
+          <Reveal className="player-note" delay={0.1}>
+            <span className="note-pin" aria-hidden="true" />
+            <p className="hand-note">Builder. Researcher. People person. Frequently distracted by a very good cave.</p>
+            <h2>Engineering,<br /><em>but with dragons.</em></h2>
+            <p>Noel and his friends create huge survival builds, explore modpacks with bosses and dragons, and automate gloriously unnecessary production lines.</p>
+            <p>He even tuned a Raspberry Pi to host a modded Java server over Tailscale.</p>
+            <div className="tag-row"><span>Java Edition</span><span>Create</span><span>Raspberry Pi</span><span>Tailscale</span></div>
+          </Reveal>
+        </section>
+        <section className="player-traits">
+          {[
+            ['01', 'Systems', 'Drawn to projects with too many moving parts: distributed crawlers, evidence systems, AI tools, and infrastructure.'],
+            ['02', 'Leadership', 'A former Head Boy and now Senior Core Member helping lead GDG VIT\'s AI/ML domain.'],
+            ['03', 'Curiosity', 'Sports, strength training, philosophy, debate, unfamiliar research, games, and ambitious builds.'],
+            ['04', 'People', 'Earn trust, make the group work better, and create room for other people to grow.'],
+          ].map(([number, title, copy], index) => <Reveal className="trait" delay={index * 0.06} key={title}><span>{number}</span><strong>{title}</strong><p>{copy}</p></Reveal>)}
+        </section>
+      </div>
+    </PageFrame>
+  )
+}
+
+const workshopProjects = [projects[0], projects[1], projects[2], projects[3]]
+const projectRoutes = ['/projects/stretchy', '/projects/ultrachat', '/projects/kargo', '/projects#first-build']
+
+function ProjectIndexPage() {
+  const [selected, setSelected] = useState(0)
+  const project = workshopProjects[selected]
+  return (
+    <PageFrame className="workshop-page">
+      <div className="workshop-sun" aria-hidden="true" />
+      <PixelAtmosphere count={18} />
+      <div className="page-shell">
+        <SectionIntro kicker="THE WORKSHOP / FOUR BUILDS" title={<>Every project is<br /><em>a world of its own.</em></>} copy="Pick up an artifact. Each opens into the decisions, architecture, contribution boundary, and honest caveats behind the build." />
+        <section className="artifact-shelf" aria-label="Project artifacts">
+          {workshopProjects.map((item, index) => (
+            <button key={item.slug} className={selected === index ? 'is-active' : ''} onClick={() => setSelected(index)}>
+              <span className="shelf-index">0{index + 1}</span><span className="artifact-plinth"><Artifact file={item.artifact} /></span><strong>{item.title}</strong><small>{item.number}</small>
+            </button>
+          ))}
+        </section>
+        <AnimatePresence mode="wait">
+          <motion.section className="artifact-story" key={project.slug} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.38 }}>
+            <div className="artifact-story__title"><span>{project.status}</span><h2>{project.title}</h2><p>{project.summary}</p></div>
+            <div className="artifact-story__role"><span>NOEL'S PART</span><p>{project.contribution}</p><div className="tag-row">{project.stack.map((item) => <span key={item}>{item}</span>)}</div></div>
+            {selected < 3 ? <Link className="primary-action" to={projectRoutes[selected]}><span>Enter case study</span><ArrowRight /></Link> : <a className="primary-action" href="#first-build"><span>Open memory</span><ArrowRight /></a>}
+          </motion.section>
+        </AnimatePresence>
+        <Reveal className="first-build" delay={0.1}>
+          <div className="jukebox-glow"><Artifact file="artifact-kermit.webp" /><i /><i /><i /></div>
+          <div id="first-build"><span className="eyebrow">THE FIRST CONTRAPTION / GRADE 11</span><h2>A Discord bot built<br />one command at a time.</h2><p>Before Noel properly knew Python, an experiment became the bot his friends genuinely used for music, games, moderation, and online-class reminders. Private, imperfect, and still a favourite because it made a difficult year more fun.</p></div>
+        </Reveal>
+      </div>
+    </PageFrame>
+  )
+}
+
+function BackToWorkshop() {
+  return <Link className="back-link" to="/projects"><ArrowLeft /> Back to workshop</Link>
+}
+
+function StretchyPage() {
+  const [room, setRoom] = useState(0)
+  const current = stretchySystems[room]
+  return (
+    <PageFrame className="stretchy-page case-page">
+      <div className="ancient-haze" aria-hidden="true" /><PixelAtmosphere count={22} />
+      <div className="case-shell">
+        <BackToWorkshop />
+        <header className="case-hero stretchy-hero">
+          <div><span className="eyebrow">ACTIVE WORLD / SOLO BUILD</span><h1>Stretchy</h1><p>A local-first investigation platform for enormous, mixed-media archives. Evidence enters with identity and leaves with receipts.</p><div className="case-actions"><a href="https://noel-alex.github.io/stretchy/" target="_blank" rel="noreferrer">Open preview <ExternalLink /></a><a href="https://github.com/Noel-Alex/stretchy" target="_blank" rel="noreferrer"><Github /> Source</a></div></div>
+          <div className="stretchy-core"><Artifact file="artifact-stretchy.webp" /><span>CANONICAL<br />EVIDENCE CORE</span>{Array.from({ length: 8 }, (_, index) => <i key={index} style={{ '--beam': index } as CSSProperties} />)}</div>
+        </header>
+
+        <section className="evidence-journey">
+          <div className="journey-rail" aria-label="Stretchy system rooms">
+            {stretchySystems.map((system, index) => <button className={room === index ? 'is-active' : ''} onClick={() => setRoom(index)} key={system.id}><span>{system.icon}</span><strong>{system.room}</strong><i /></button>)}
+          </div>
+          <AnimatePresence mode="wait">
+            <motion.article className="journey-copy" key={current.id} initial={{ opacity: 0, x: 28 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: 0.4 }}>
+              <span>ROOM {current.icon} / 06 <i /> VERIFIED</span><h2>{current.title}</h2><p>{current.copy}</p><ul>{current.details.map((detail) => <li key={detail}><i />{detail}</li>)}</ul>
+            </motion.article>
+          </AnimatePresence>
+          <div className="receipt-stream" aria-hidden="true">{Array.from({ length: 14 }, (_, index) => <i key={index} style={{ '--receipt': index } as CSSProperties} />)}</div>
+        </section>
+
+        <Reveal className="stretchy-scale">
+          <span className="eyebrow">WHY IT BECAME A CITY</span><h2>One crawler was never the project.</h2>
+          <p>Stretchy spans a Rust scanner, Python control plane and workers, PostgreSQL canonical records, Qdrant retrieval, a bounded evidence graph, durable Temporal investigations, source-bound agent dossiers, telemetry, review workflows, security boundaries, and an editorial command centre.</p>
+          <div><span>RUST SCANNER</span><span>DURABLE WORKFLOWS</span><span>HYBRID RETRIEVAL</span><span>EVIDENCE GRAPH</span><span>AGENT LINEAGE</span><span>REPORTING</span></div>
+        </Reveal>
+
+        <section className="truth-boundary">
+          <header><span className="eyebrow">HONEST WORLD BOUNDARY</span><h2>Built, provisional,<br />and still outside the gate.</h2></header>
+          <div>
+            <article><span>01 / VERIFIED</span><strong>The foundation exists.</strong><p>Ingestion, provenance, retrieval machinery, bounded graphs, durable workflows, telemetry, review, security, and reporting are implemented and tested.</p></article>
+            <article><span>02 / PROVISIONAL</span><strong>Models still need promotion evidence.</strong><p>Dense model selection remains tied to a human-authored golden retrieval set. Sparse-only search is never relabelled as hybrid.</p></article>
+            <article><span>03 / EXTERNAL GATE</span><strong>Field acceptance is not a demo.</strong><p>A real remote-worker field run and an owner-approved full-corpus campaign remain outside the public demonstration boundary.</p></article>
+          </div>
+        </section>
+      </div>
+    </PageFrame>
+  )
+}
+
+const ultraSteps = [
+  ['Collect', 'Server-scoped messages enter the knowledge path.'],
+  ['Compact', 'Long histories become useful summaries.'],
+  ['Index', 'Embeddings enter vector-backed collections.'],
+  ['Retrieve', 'Commands recover the relevant context.'],
+  ['Answer', 'A useful response returns to Discord.'],
 ] as const
 
-function ProjectWorkbench({ onTravel }: { onTravel: (id: string) => void }) {
-  const [selected, setSelected] = useState(0)
-  const [machineStep, setMachineStep] = useState(-1)
-  const current = workbenchProjects[selected]
-
+function UltraChatPage() {
+  const [step, setStep] = useState(-1)
   useEffect(() => {
-    if (machineStep < 0 || machineStep >= current.steps.length) return
-    const timer = window.setTimeout(() => setMachineStep((step) => step + 1), 460)
+    if (step < 0 || step >= ultraSteps.length) return
+    const timer = window.setTimeout(() => setStep((value) => value + 1), 600)
     return () => window.clearTimeout(timer)
-  }, [current.steps.length, machineStep])
-
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => {
-      const index = Number(event.key) - 1
-      if (index >= 0 && index < workbenchProjects.length) {
-        setSelected(index)
-        setMachineStep(-1)
-      }
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [])
-
-  const selectProject = (index: number) => {
-    setSelected(index)
-    setMachineStep(-1)
-  }
-
+  }, [step])
   return (
-    <div className="project-workbench">
-      <div className="workbench-inventory" aria-label="Choose a project artifact">
-        <span className="workbench-label">SELECT ITEM</span>
-        {workbenchProjects.map((project, index) => (
-          <button
-            key={project.slug}
-            className={selected === index ? 'is-selected' : ''}
-            onClick={() => selectProject(index)}
-            aria-pressed={selected === index}
-          >
-            <span className="slot-key">{index + 1}</span>
-            <img src={`${import.meta.env.BASE_URL}assets/${project.artifact}`} alt="" />
-            <span>{project.title}</span>
-          </button>
-        ))}
+    <PageFrame className="ultra-page case-page">
+      <PixelAtmosphere count={24} />
+      <div className="case-shell">
+        <BackToWorkshop />
+        <header className="case-hero ultra-hero"><div><span className="eyebrow">GDG VIT / COLLABORATIVE</span><h1>UltraChat</h1><p>A Discord companion that helps a community remember, summarise, and retrieve its own conversations.</p></div><div className="enchanted-book"><Artifact file="artifact-ultrachat.webp" /><i /><i /><i /><i /></div></header>
+        <section className="chat-enchantment">
+          <div className="discord-scroll">
+            <header><i /> # project-help <span>3 adventurers online</span></header>
+            <p><b>N</b><span><strong>Noel</strong>Can someone find the deployment discussion from last week?</span></p>
+            <p className={step >= 4 ? 'bot-message is-visible' : 'bot-message'}><b>U</b><span><strong>UltraChat</strong>I found the relevant context across four channel summaries.</span></p>
+            <small>{step >= 0 && step < 5 ? `UltraChat is ${ultraSteps[Math.min(step, 4)][0].toLowerCase()}ing...` : 'Pull the lever to replay the knowledge path.'}</small>
+          </div>
+          <div className="enchantment-path">
+            {ultraSteps.map(([title, copy], index) => <article className={step >= index ? 'is-lit' : ''} key={title}><span>0{index + 1}</span><strong>{title}</strong><p>{copy}</p><i /></article>)}
+          </div>
+          <button className="redstone-lever" onClick={() => setStep(0)}><span><i /></span><strong>{step >= 0 && step < ultraSteps.length ? 'WORKING...' : 'PULL TO REPLAY'}</strong></button>
+        </section>
+        <section className="case-contribution"><div><span className="eyebrow">NOEL'S BUILD PATH</span><h2>From messages to memory.</h2></div><div><p>Collection and Discord commands, long-text summarisation, vector storage and RAG querying, backend integration, prompts, and containerisation. A later personal AWS variant explored a separate Go backend with DynamoDB.</p><div className="source-links">{projects[1].links.map((link) => <a key={link.href} href={link.href} target="_blank" rel="noreferrer">{link.label}<ExternalLink /></a>)}</div></div></section>
       </div>
-
-      <AnimatePresence mode="wait">
-        <motion.div
-          className={`workbench-scene workbench-scene--${current.slug}`}
-          key={current.slug}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.24 }}
-        >
-          <div className="artifact-pedestal">
-            <span className="artifact-pedestal__beam" />
-            <motion.img
-              src={`${import.meta.env.BASE_URL}assets/${current.artifact}`}
-              alt={`${current.itemName}, representing ${current.title}`}
-              animate={{ y: [0, -7, 0] }}
-              transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
-            />
-            <div className="artifact-pedestal__base"><span>ITEM</span><strong>{current.itemName}</strong></div>
-          </div>
-
-          <div className="workbench-dossier">
-            <span className="eyebrow">{current.label}</span>
-            <h3>{current.title}</h3>
-            <p className="workbench-summary">{current.summary}</p>
-            <div className="workbench-contribution"><span>NOEL BUILT / CONTRIBUTED</span><p>{current.contribution}</p></div>
-            <div className="workbench-actions">
-              <button className="primary-button primary-button--compact" onClick={() => setMachineStep(0)} disabled={machineStep >= 0 && machineStep < current.steps.length}>
-                <Play />{machineStep >= 0 && machineStep < current.steps.length ? 'Machine running…' : 'Use item'}
-              </button>
-              <button className="text-link" onClick={() => onTravel(current.target)}>Open full case study<ArrowDown /></button>
-            </div>
-          </div>
-
-          <div className={`workbench-machine ${machineStep >= 0 ? 'is-running' : ''}`} aria-live="polite">
-            {current.steps.map((step, index) => (
-              <div className={machineStep >= index ? 'is-powered' : ''} key={step}>
-                <span>{String(index + 1).padStart(2, '0')}</span><strong>{step}</strong><i />
-              </div>
-            ))}
-            <p className={machineStep >= current.steps.length ? 'is-visible' : ''}>{current.result}</p>
-          </div>
-        </motion.div>
-      </AnimatePresence>
-      <p className="workbench-hint"><kbd>1–4</kbd> Swap the artifact. <span>Use it to watch the system reveal its real work.</span></p>
-    </div>
+    </PageFrame>
   )
 }
 
-function ProjectDialog({ project, onClose }: { project: Project | null; onClose: () => void }) {
+const kargoSteps = [
+  ['Shallow clone', 'Bound the repository before inspection.'],
+  ['Source map', 'Select relevant extensions and structure.'],
+  ['Runtime clues', 'Find ports, persistence, uploads, and paths.'],
+  ['Docker proposal', 'Turn repository evidence into configuration.'],
+] as const
+
+function KargoPage() {
+  const [step, setStep] = useState(-1)
   useEffect(() => {
-    if (!project) return
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [onClose, project])
-
+    if (step < 0 || step >= kargoSteps.length) return
+    const timer = window.setTimeout(() => setStep((value) => value + 1), 650)
+    return () => window.clearTimeout(timer)
+  }, [step])
   return (
-    <AnimatePresence>
-      {project && (
-        <motion.div className="dialog-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={onClose}>
-          <motion.div
-            className="item-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="project-dialog-title"
-            initial={{ opacity: 0, y: 24, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 18, scale: 0.98 }}
-            transition={{ type: 'spring', stiffness: 240, damping: 26 }}
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <button className="icon-button item-dialog__close" onClick={onClose} aria-label="Close project details"><X /></button>
-            <div className="item-dialog__icon"><ProjectArtifact project={project} /></div>
-            <div className="eyebrow">{project.number}</div>
-            <h2 id="project-dialog-title">{project.title}</h2>
-            <StatusTag tone={project.slug === 'kermit' ? 'amber' : 'green'}>{project.status}</StatusTag>
-            <p className="item-dialog__summary">{project.summary}</p>
-            <div className="detail-block"><span>NOEL’S PART</span><p>{project.contribution}</p></div>
-            <div className="tag-row">{project.stack.map((item) => <span key={item}>{item}</span>)}</div>
-            {project.links.length > 0 ? (
-              <div className="dialog-actions">
-                {project.links.map((link) => (
-                  <a key={link.href} className="text-link" href={link.href} target="_blank" rel="noreferrer">{link.label}<ArrowUpRight size={15} /></a>
-                ))}
+    <PageFrame className="kargo-page case-page">
+      <PixelAtmosphere count={16} />
+      <div className="case-shell">
+        <BackToWorkshop />
+        <header className="case-hero kargo-hero"><div><span className="eyebrow">GDG VIT / COLLABORATIVE</span><h1>Kargo</h1><p>A platform for carrying repositories through container configuration and into managed application deployments.</p></div><div className="copper-cog" aria-hidden="true"><i /><Artifact file="artifact-kargo.webp" /></div></header>
+        <section className="kargo-factory">
+          <div className="repo-ticket"><span>REPOSITORY INPUT</span><code>github.com/you/app</code><button onClick={() => setStep(0)}>Start inspection <Play /></button></div>
+          <div className="rail-line"><i /><motion.div className="cargo-cart" animate={{ left: step < 0 ? '2%' : `${Math.min(step, 3) * 30 + 7}%` }} transition={{ type: 'spring', stiffness: 90, damping: 18 }}><Artifact file="artifact-kargo.webp" /></motion.div></div>
+          <div className="factory-stations">{kargoSteps.map(([title, copy], index) => <article className={step >= index ? 'is-powered' : ''} key={title}><span>0{index + 1}</span><strong>{title}</strong><p>{copy}</p><i /></article>)}</div>
+          <div className={step >= kargoSteps.length ? 'factory-crate is-ready' : 'factory-crate'}><span>OUTPUT CRATE</span><strong>Dockerfile + Compose proposal</strong><small>backed by repository signals, ready for review</small></div>
+        </section>
+        <section className="case-contribution"><div><span className="eyebrow">NOEL'S CONTRIBUTION</span><h2>The repository inspection path.</h2></div><div><p>Bounded cloning, extension-aware source selection, folder mapping, codebase summarisation, port discovery, and persistent-volume signals used by the Dockerisation flow. Kargo was collaborative, and much of that work happened beyond individual commit history.</p><div className="source-links">{projects[2].links.map((link) => <a key={link.href} href={link.href} target="_blank" rel="noreferrer">{link.label}<ExternalLink /></a>)}</div></div></section>
+      </div>
+    </PageFrame>
+  )
+}
+
+function ResearchPage() {
+  const [mode, setMode] = useState<'crawler' | 'model'>('crawler')
+  const [pulse, setPulse] = useState(0)
+  return (
+    <PageFrame className="research-page">
+      <PixelAtmosphere count={28} />
+      <div className="page-shell">
+        <SectionIntro kicker="BELOW BEDROCK / SOLO EXPERIMENT" title={<>A crawler became<br /><em>a research instrument.</em></>} copy="Arachne was Noel's first serious systems-design experiment. It later collected DOM structure for a graph model that distinguishes phishing pages from legitimate ones." />
+        <div className="research-switch"><button className={mode === 'crawler' ? 'is-active' : ''} onClick={() => setMode('crawler')}>01 / Crawler</button><button className={mode === 'model' ? 'is-active' : ''} onClick={() => setMode('model')}>02 / PhishGuard</button></div>
+        <AnimatePresence mode="wait">
+          {mode === 'crawler' ? (
+            <motion.section className="research-lab crawler-lab" key="crawler" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}>
+              <div className="web-viz" onClick={() => setPulse((value) => value + 1)} role="button" tabIndex={0} onKeyDown={(event) => event.key === 'Enter' && setPulse((value) => value + 1)}>
+                <span>CLICK TO SEND A URL</span><Artifact file="artifact-arachne.webp" />
+                {Array.from({ length: 14 }, (_, index) => <i key={`${pulse}-${index}`} style={{ '--node': index } as CSSProperties} />)}
               </div>
-            ) : <p className="private-note">Private memory — story shared, source kept off the internet.</p>}
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+              <div className="lab-copy"><span className="eyebrow">SYSTEMS DESIGN FIRST</span><h2>A horizontally scalable crawler.</h2><p>Arachne separated coordination, crawling, queueing, and persistence so work could scale horizontally. The immediate research dataset never approached its intended ceiling; learning the architecture was part of the point.</p><a href="https://github.com/Noel-Alex/Arachne" target="_blank" rel="noreferrer">Inspect source <ExternalLink /></a></div>
+              <div className="crawler-route">{['URL frontier', 'Kafka queue', 'Rust workers', 'Result queue', 'Coordinator + ScyllaDB'].map((item, index) => <div key={item}><span>0{index + 1}</span><strong>{item}</strong>{index < 4 && <ArrowRight />}</div>)}</div>
+            </motion.section>
+          ) : (
+            <motion.section className="research-lab model-lab" key="model" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}>
+              <div className="graph-orb"><strong>GAT</strong><span>DOM topology<br />+ URL features</span>{Array.from({ length: 18 }, (_, index) => <i key={index} style={{ '--node': index } as CSSProperties} />)}</div>
+              <div className="model-stat"><span>COLLECTED EXAMPLES</span><strong>68,175</strong><small>57,206 safe / 10,969 phishing</small></div>
+              <div className="model-stat"><span>HELD-OUT SET</span><strong>13,635</strong><small>evaluated examples</small></div>
+              <div className="model-stat"><span>PHISHING RECALL</span><strong>0.99</strong><small>experimental result</small></div>
+              <div className="model-stat"><span>PHISHING PRECISION</span><strong>0.94</strong><small>experimental result</small></div>
+              <aside><span>THE FAILURE MODE MATTERS</span><p>The legitimate class leaned heavily on globally popular, high-quality sites. Rough but legitimate pages were underrepresented, so bare-minimum HTML could be misclassified as phishing. These numbers validate an experiment, not a production detector.</p></aside>
+            </motion.section>
+          )}
+        </AnimatePresence>
+      </div>
+    </PageFrame>
   )
 }
 
-function Inventory({ open, onClose, onSelect }: { open: boolean; onClose: () => void; onSelect: (project: Project) => void }) {
-  useEffect(() => {
-    if (!open) return
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' || event.key.toLowerCase() === 'e') onClose()
+function CommunityPage() {
+  return (
+    <PageFrame className="community-page">
+      <PixelAtmosphere count={16} />
+      <div className="page-shell">
+        <SectionIntro kicker="GDG VIT / MULTIPLAYER WORLD" title={<>The best builds<br /><em>are multiplayer.</em></>} copy="Senior Core Member, AI/ML lead in practice, event organiser, technical judge, recruiter, curriculum designer, and friend." />
+        <section className="community-photo">
+          <Reveal className="event-frame"><img src={baseAsset('devjams-team-srgb.jpg')} alt="Noel and the GDG VIT DevJams team wearing matching Hello Kitty pyjamas" /><span className="noel-pointer"><strong>Noel</strong><i /></span><figcaption><span>DEVJAMS '25</span><strong>A late-night memory with the team.</strong></figcaption></Reveal>
+          <Reveal className="community-ledger" delay={0.12}>
+            <span className="eyebrow">THE SERVER LEDGER</span>
+            <article><strong>4,700</strong><p>applicants in the process through which Noel joined as the only new AI/ML junior core member.</p></article>
+            <article><strong>~5,000</strong><p>applicants helped evaluate later; Noel personally assessed about 256 through tests, projects, and interviews.</p></article>
+            <article><strong>400+</strong><p>students reached as sole speaker and curriculum designer for "Inside Google's DeepMind."</p></article>
+            <a href={socialLinks.talk} target="_blank" rel="noreferrer"><Play /> Watch the session <ExternalLink /></a>
+          </Reveal>
+        </section>
+        <section className="community-timeline">
+          {[
+            ['2023', 'Joined the guild', 'Selected into AI/ML, helped build UltraChat, and organised DevJams, Women Techies, and Hexathon.'],
+            ['2024-25', 'Built the next season', 'The three major events again, Kargo, judging, technical planning, and recruitment.'],
+            ['NOW', 'Senior Core', 'Helping lead AI/ML and selecting the next cohort to carry the community forward.'],
+          ].map(([year, title, copy], index) => <Reveal className="timeline-stop" delay={index * 0.08} key={year}><span>{year}</span><strong>{title}</strong><p>{copy}</p><i /></Reveal>)}
+        </section>
+      </div>
+    </PageFrame>
+  )
+}
+
+function ContactPage() {
+  return (
+    <PageFrame className="contact-page">
+      <PixelAtmosphere count={34} />
+      <div className="portal-rings" aria-hidden="true"><i /><i /><i /><i /></div>
+      <section className="contact-copy">
+        <span className="eyebrow">THE PORTAL IS OPEN</span>
+        <h1>Let's build something<br /><em>unreasonably good.</em></h1>
+        <p>For remote work, ambitious research, systems that need careful thinking, or a serious conversation about Minecraft server optimisation.</p>
+        <div className="contact-actions"><a className="primary-action" href={socialLinks.email}><span><Mail /> Email Noel</span><ArrowRight /></a><a href={socialLinks.linkedin} target="_blank" rel="noreferrer">LinkedIn <ExternalLink /></a><a href={socialLinks.github} target="_blank" rel="noreferrer"><Github /> GitHub</a></div>
+        <a className="resume-link" href={`${import.meta.env.BASE_URL}Noel-Alex-Resume.pdf`} target="_blank" rel="noreferrer">Open creative resume <ExternalLink /></a>
+        <small><MapPin /> Open to remote work and opportunities in Riyadh, Abu Dhabi, Dubai, and the US.</small>
+      </section>
+    </PageFrame>
+  )
+}
+
+function NotFound() {
+  return <PageFrame className="not-found"><div><span className="eyebrow">WORLD NOT FOUND</span><h1>You fell out of the map.</h1><Link className="primary-action" to="/"><span>Respawn</span><ArrowRight /></Link></div></PageFrame>
+}
+
+function RouteStage() {
+  const location = useLocation()
+  const page = (() => {
+    switch (location.pathname) {
+      case '/': return <HomePage />
+      case '/player': return <PlayerPage />
+      case '/projects': return <ProjectIndexPage />
+      case '/projects/stretchy': return <StretchyPage />
+      case '/projects/ultrachat': return <UltraChatPage />
+      case '/projects/kargo': return <KargoPage />
+      case '/research': return <ResearchPage />
+      case '/community': return <CommunityPage />
+      case '/contact': return <ContactPage />
+      default: return <NotFound />
     }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [onClose, open])
-
+  })()
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div className="inventory-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={onClose}>
-          <motion.div className="inventory" role="dialog" aria-modal="true" aria-labelledby="inventory-title" initial={{ y: 36, opacity: 0, scale: 0.96 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 20, opacity: 0, scale: 0.98 }} onMouseDown={(event) => event.stopPropagation()}>
-            <div className="inventory__header">
-              <div><span className="eyebrow">PLAYER INVENTORY</span><h2 id="inventory-title">Everything Noel carries</h2></div>
-              <button className="icon-button" onClick={onClose} aria-label="Close inventory"><X /></button>
-            </div>
-            <div className="inventory__grid">
-              {projects.map((project) => (
-                <button key={project.slug} className="inventory-slot" onClick={() => { onSelect(project); onClose() }}>
-                  <ProjectArtifact project={project} /><span>{project.title}</span>
-                </button>
-              ))}
-              <div className="inventory-slot inventory-slot--passive"><span className="inventory-rune">L</span><span>Leadership</span></div>
-              <div className="inventory-slot inventory-slot--passive"><span className="inventory-rune">?</span><span>Curiosity</span></div>
-              <div className="inventory-slot inventory-slot--passive"><span className="inventory-rune">Σ</span><span>Systems</span></div>
-              <div className="inventory-slot inventory-slot--passive"><span className="inventory-rune">+</span><span>Community</span></div>
-            </div>
-            <p className="inventory__hint"><kbd>E</kbd> closes inventory · Some items unlock only by exploring.</p>
-          </motion.div>
-        </motion.div>
-      )}
+    <AnimatePresence mode="wait">
+      <div key={location.pathname}>{page}</div>
     </AnimatePresence>
   )
 }
 
-function Achievement({ toast }: { toast: Toast }) {
+function RoutedApp() {
+  const [sound, setSound] = useState(false)
+  const audio = useRef<HTMLAudioElement>(null)
+  useEffect(() => {
+    if (!audio.current) return
+    audio.current.volume = 0.18
+    if (sound) void audio.current.play().catch(() => setSound(false))
+    else audio.current.pause()
+  }, [sound])
   return (
-    <AnimatePresence>
-      {toast && (
-        <motion.div className="achievement" role="status" initial={{ y: -90, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -90, opacity: 0 }}>
-          <div className="achievement__icon"><Sparkles /></div>
-          <div><span>ADVANCEMENT MADE!</span><strong>{toast.title}</strong><small>{toast.detail}</small></div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <>
+      <audio ref={audio} src={baseAsset('into-the-caves.mp3')} loop preload="none" />
+      <FloatingHUD sound={sound} onSound={() => setSound((value) => !value)} />
+      <ScrollToTop />
+      <TerrainLoader />
+      <RouteStage />
+    </>
   )
 }
 
 export default function App() {
-  const [active, setActive] = useState(0)
-  const [sound, setSound] = useState(false)
-  const [creative, setCreative] = useState(false)
-  const [inventoryOpen, setInventoryOpen] = useState(false)
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
-  const [stretchyNode, setStretchyNode] = useState(0)
-  const [toast, setToast] = useState<Toast>(null)
-  const [eyes, setEyes] = useState<Set<number>>(new Set())
-  const visited = useRef(new Set([0]))
-  const sequence = useRef<string[]>([])
-  const typed = useRef('')
-  const audioRef = useRef<HTMLAudioElement>(null)
-  const reducedMotion = useReducedMotion()
-
-  useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-    audio.volume = 0.16
-    if (sound) {
-      void audio.play().catch(() => setSound(false))
-    } else {
-      audio.pause()
-    }
-  }, [sound])
-
-  const showToast = useCallback((next: Exclude<Toast, null>) => {
-    setToast(next)
-    window.setTimeout(() => setToast(null), 4200)
-  }, [])
-
-  useEffect(() => {
-    const nodes = Array.from(document.querySelectorAll<HTMLElement>('[data-world-section]'))
-    const observer = new IntersectionObserver((entries) => {
-      const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
-      if (!visible) return
-      const index = Number((visible.target as HTMLElement).dataset.worldSection)
-      setActive(index)
-      if (!visited.current.has(index)) {
-        visited.current.add(index)
-        const achievement = achievements[index]
-        if (achievement) showToast(achievement)
-      }
-    }, { threshold: [0.18, 0.34, 0.56] })
-    nodes.forEach((node) => observer.observe(node))
-    return () => observer.disconnect()
-  }, [showToast])
-
-  useEffect(() => {
-    const konami = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a']
-    const handleKey = (event: KeyboardEvent) => {
-      const tag = (event.target as HTMLElement).tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return
-      if (event.key.toLowerCase() === 'e' && !selectedProject) setInventoryOpen((value) => !value)
-      sequence.current = [...sequence.current, event.key].slice(-konami.length)
-      if (sequence.current.join('|').toLowerCase() === konami.join('|').toLowerCase()) {
-        setCreative(true)
-        showToast({ title: 'Creative mode', detail: 'Flight enabled. Imagination was already unlimited.' })
-      }
-      if (event.key.length === 1) {
-        typed.current = (typed.current + event.key).slice(-12)
-        if (typed.current.toLowerCase().endsWith('/seed')) showToast({ title: 'Seed: 79050483', detail: 'A world built from curiosity, people, and unreasonable projects.' })
-      }
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [selectedProject, showToast])
-
-  const collectEye = (number: number) => {
-    if (eyes.has(number)) return
-    const next = new Set(eyes)
-    next.add(number)
-    setEyes(next)
-    showToast(next.size === 3 ? { title: 'Eye spy', detail: 'All three Eyes found. The portal remembers.' } : { title: `Eye of Ender ${next.size}/3`, detail: 'Something watches from between the blocks.' })
-  }
-
-  const jumpTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth' })
-  const currentSection = sections[active]
-  const progress = `${Math.round((active / (sections.length - 1)) * 100)}%`
-  const selectedSystem = stretchySystems[stretchyNode]
-
-  return (
-    <div className={`app-shell biome-${active} ${creative ? 'creative-mode' : ''}`}>
-      <CinematicWorld active={active} reducedMotion={reducedMotion} />
-      <audio ref={audioRef} src={`${import.meta.env.BASE_URL}assets/into-the-caves.mp3`} loop preload="none" />
-      <div className="scroll-progress" style={{ '--progress': progress } as React.CSSProperties} />
-      <Achievement toast={toast} />
-
-      <header className="top-hud">
-        <button className="brand" onClick={() => jumpTo('spawn')} aria-label="Return to spawn">
-          <span className="brand-avatar"><span className="brand-hair" /><span className="brand-face" /></span>
-          <span><strong>NOEL ALEX</strong><small><span className="online-dot" /> nooeeellll123</small></span>
-        </button>
-        <nav className="desktop-nav" aria-label="Primary navigation">
-          {sections.map((section, index) => <button key={section.id} className={active === index ? 'is-active' : ''} onClick={() => jumpTo(section.id)}>{section.short}</button>)}
-        </nav>
-        <div className="hud-actions">
-          <button className="hud-control" onClick={() => setSound((value) => !value)} aria-pressed={sound} aria-label={sound ? 'Mute ambient sound' : 'Play ambient sound'}>
-            {sound ? <Volume2 /> : <VolumeX />}<span>{sound ? 'Music on' : 'Music off'}</span>
-          </button>
-          <button className="hud-control inventory-trigger" onClick={() => setInventoryOpen(true)}><kbd>E</kbd><span>Inventory</span></button>
-        </div>
-      </header>
-
-      <aside className="coordinates" aria-label="Current location"><span>BIOME</span><strong>{currentSection.label}</strong><small>Y {64 - active * 14} · {active < 2 ? 'OVERWORLD' : active < 5 ? 'DEEPSLATE' : active < 6 ? 'VILLAGE' : 'THE END'}</small></aside>
-
-      <main id="main">
-        <section id="spawn" className="world-section hero-section" data-world-section="0">
-          <div className="section-inner hero-layout">
-            <div className="hero-copy">
-              <motion.div className="eyebrow" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>PLAYER ONE · VIT VELLORE · GRADUATING 2027</motion.div>
-              <motion.h1 initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>Noel builds worlds<br /><span>worth exploring.</span></motion.h1>
-              <motion.p className="hero-lede" initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}>Data science student building ambitious research systems, developer tools, and the communities that make difficult work feel possible.</motion.p>
-              <motion.div className="hero-actions" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }}>
-                <button className="primary-button" onClick={() => jumpTo('stretchy')}>Begin expedition<ArrowDown /></button>
-                <a className="secondary-button" href={socialLinks.github} target="_blank" rel="noreferrer"><Github />GitHub<ArrowUpRight /></a>
-              </motion.div>
-              <div className="availability-line"><span className="online-dot" /> Open to remote work and opportunities across Riyadh, Abu Dhabi, Dubai, and the US.</div>
-            </div>
-            <aside className="spawn-card pixel-panel">
-              <span className="spawn-card__label">CURRENT QUEST</span>
-              <strong>Build systems people can trust.</strong>
-              <p>Research, retrieval, distributed infrastructure, and tools that stay honest when the real world gets complicated.</p>
-              <div className="quest-list"><span><Check /> Evidence first</span><span><Check /> People always</span><span><Check /> Learn by building</span></div>
-            </aside>
-          </div>
-          <button className="scroll-cue" onClick={() => jumpTo('story')}><span>Scroll to travel</span><ChevronDown /></button>
-        </section>
-
-        <section id="story" className="world-section story-section story-section--extended" data-world-section="1">
-          <div className="section-inner">
-            <Reveal className="split-layout">
-              <div className="story-copy content-panel">
-                <div className="eyebrow">THE PLAYER BEHIND THE ARMOUR</div>
-                <h2>Curiosity starts the build.<br />People make it matter.</h2>
-                <p className="large-copy">Noel grew up in Riyadh and now studies Computer Science with a specialization in Data Science at VIT Vellore.</p>
-                <p>He gravitates toward projects with too many moving parts: distributed crawlers, evidence systems, AI tools, deployment infrastructure, and modded survival servers. The thread connecting them is human—learn deeply, bring people together, and build something useful enough that others want to join.</p>
-                <div className="story-grid">
-                  <div><strong>People first</strong><span>Head Boy in Grade 12; now a Senior Core Member helping lead GDG VIT’s AI/ML domain.</span></div>
-                  <div><strong>Always exploring</strong><span>Sports, strength training, philosophy, debates, unfamiliar research, games, and very large Minecraft builds.</span></div>
-                </div>
-              </div>
-              <figure className="memory-card memory-card--portal">
-                <img src={`${import.meta.env.BASE_URL}assets/minecraft-end-portal.webp`} alt="Noel and friends in a Minecraft stronghold before fighting the Ender Dragon" />
-                <figcaption><span>MEMORY 01</span><strong>Before the Ender Dragon</strong><small>Survival is better with a party.</small></figcaption>
-              </figure>
-            </Reveal>
-            <Reveal className="minecraft-log">
-              <div className="minecraft-log__copy">
-                <span className="eyebrow">SERVER LOG · JAVA EDITION</span>
-                <h3>Engineering, but with dragons.</h3>
-                <p>Noel and his friends build huge survival structures, explore modpacks with bosses and dragons, and automate absurd production lines with Create-style machinery. He even tuned a Raspberry Pi to host a modded server, using Tailscale so the group could join locally or over the internet.</p>
-                <div className="tag-row"><span>Java Edition</span><span>Modded survival</span><span>Create automation</span><span>Raspberry Pi</span><span>Tailscale</span></div>
-              </div>
-              <figure><img src={`${import.meta.env.BASE_URL}assets/minecraft-cave.webp`} alt="A huge modded Minecraft cave from Noel's survival world" /><figcaption>A cave from one of Noel’s worlds · the builds are coming later</figcaption></figure>
-            </Reveal>
-          </div>
-          <button className="ender-eye ender-eye--one" onClick={() => collectEye(1)} aria-label="Collect hidden Eye of Ender one"><span className="ender-eye-glyph">◈</span></button>
-        </section>
-
-        <section id="stretchy" className="world-section stretchy-section" data-world-section="2">
-          <div className="section-inner section-inner--wide">
-            <Reveal className="stretchy-hero">
-              <div>
-                <div className="eyebrow">MAIN QUEST · ACTIVE WORLD</div>
-                <h2>Stretchy is an evidence city,<br /><span>not a chatbot.</span></h2>
-                <p className="large-copy">A local-first investigation platform designed to turn enormous mixed-media archives into source-verifiable research—without pretending a model’s confidence is evidence.</p>
-              </div>
-              <div className="stretchy-hero__actions">
-                <StatusTag>active build · public preview</StatusTag>
-                <a className="text-link" href="https://noel-alex.github.io/stretchy/" target="_blank" rel="noreferrer">Enter command centre<ArrowUpRight /></a>
-                <a className="text-link text-link--muted" href="https://github.com/Noel-Alex/stretchy" target="_blank" rel="noreferrer">Read the source<Github size={15} /></a>
-              </div>
-            </Reveal>
-
-            <Reveal className="stretchy-atlas">
-              <div className="atlas-map" aria-label="Stretchy system map">
-                <div className="atlas-map__core"><ProjectArtifact project={projects[0]} /><span>STRETCHY</span><small>canonical state</small></div>
-                <div className="atlas-path" aria-hidden="true" />
-                {stretchySystems.map((system, index) => (
-                  <button key={system.id} className={stretchyNode === index ? 'is-active' : ''} onClick={() => setStretchyNode(index)} aria-pressed={stretchyNode === index}>
-                    <span>{system.icon}</span><strong>{system.room}</strong><small>{system.status}</small>
-                  </button>
-                ))}
-              </div>
-              <AnimatePresence mode="wait">
-                <motion.article key={selectedSystem.id} className="atlas-detail" initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.26 }}>
-                  <div className="atlas-detail__top"><span>{selectedSystem.icon} / 06</span><StatusTag>{selectedSystem.status}</StatusTag></div>
-                  <div className="eyebrow">{selectedSystem.room}</div>
-                  <h3>{selectedSystem.title}</h3>
-                  <p>{selectedSystem.copy}</p>
-                  <ul>{selectedSystem.details.map((detail) => <li key={detail}><CircleDot />{detail}</li>)}</ul>
-                  <div className="atlas-detail__hint">Select another room to continue the tour <ArrowRight /></div>
-                </motion.article>
-              </AnimatePresence>
-            </Reveal>
-
-            <Reveal className="stretchy-pipeline">
-              <div className="pipeline-label"><span>THE EVIDENCE PATH</span><small>every arrow leaves a receipt</small></div>
-              {['Source folders', 'Canonical units', 'Search + graph', 'Durable inquiry', 'Human review', 'Published report'].map((label, index) => (
-                <div className="pipeline-step" key={label}><span>{String(index + 1).padStart(2, '0')}</span><strong>{label}</strong>{index < 5 && <ArrowRight />}</div>
-              ))}
-            </Reveal>
-
-            <Reveal className="truth-ledger">
-              <div className="truth-ledger__intro"><ShieldCheck /><div><span className="eyebrow">TRUTH LEDGER</span><h3>The boundary is part of the product.</h3><p>Stretchy makes verified software, provisional model choices, empty states, and external acceptance gates visibly different.</p></div></div>
-              <div className="truth-ledger__cards">
-                <article><StatusTag>verified foundation</StatusTag><p>Ingestion, provenance, retrieval machinery, bounded evidence graphs, durable workflows, telemetry, review, security, and reporting are implemented and tested.</p></article>
-                <article><StatusTag tone="amber">provisional</StatusTag><p>Dense model selection and promotion remain tied to a human-authored golden retrieval set. The system refuses to disguise sparse-only search as hybrid.</p></article>
-                <article><StatusTag tone="purple">external gate</StatusTag><p>A real remote-worker field run and an owner-approved full-corpus campaign remain outside the public demonstration boundary.</p></article>
-              </div>
-            </Reveal>
-
-            <Reveal className="stretchy-scale">
-              <article><strong>Rust + Python</strong><p>Fast read-only scanning at the edge; a typed control plane and capability-bound workers above it.</p></article>
-              <article><strong>PostgreSQL + Qdrant + FalkorDB</strong><p>Canonical state, production retrieval, and a rebuildable graph—each with a sharply different job.</p></article>
-              <article><strong>Temporal + Chronicle</strong><p>Investigations can pause, recover, compact, branch, and resume with provenance intact.</p></article>
-              <article><strong>Editorial command centre</strong><p>A living interface where every decorative room remains subordinate to canonical data.</p></article>
-            </Reveal>
-          </div>
-        </section>
-
-        <section id="builds" className="world-section builds-section" data-world-section="3">
-          <div className="section-inner section-inner--wide">
-            <Reveal className="section-heading">
-              <div><div className="eyebrow">THE REDSTONE WORKSHOP</div><h2>Two collaborative systems,<br />opened all the way up.</h2></div>
-              <p>The most interesting work is in the flow between components. Pull a lever and follow the signal.</p>
-            </Reveal>
-
-            <Reveal><ProjectWorkbench onTravel={jumpTo} /></Reveal>
-
-            <Reveal className="build-dossier build-dossier--ultra" >
-              <div className="dossier-copy">
-                <div className="dossier-number" id="ultrachat-dossier">BUILD 01 · GDG VIT</div><ProjectArtifact project={projects[1]} />
-                <h3>UltraChat</h3>
-                <p className="dossier-lede">A Discord server remembers a lot. UltraChat was built to turn that noisy history into something members could summarize, search, and ask questions about.</p>
-                <div className="contribution-callout"><span>NOEL’S BUILD PATH</span><p>Collection and commands → large-text summarization → vector storage and RAG querying → backend integration and containerization. A later personal AWS variant explored a Go backend with DynamoDB.</p></div>
-                <div className="tag-row">{projects[1].stack.map((item) => <span key={item}>{item}</span>)}</div>
-                <div className="dialog-actions">{projects[1].links.map((link) => <a key={link.href} className="text-link" href={link.href} target="_blank" rel="noreferrer">{link.label}<ArrowUpRight /></a>)}</div>
-              </div>
-              <div className="signal-machine signal-machine--chat" aria-label="UltraChat architecture">
-                <div className="machine-title"><span>KNOWLEDGE LOOP</span><small>Discord → context → answer</small></div>
-                {[
-                  ['01', 'COLLECT', 'Channel messages become server-scoped knowledge.'],
-                  ['02', 'COMPACT', 'Long histories are chunked and summarized.'],
-                  ['03', 'INDEX', 'Embeddings enter vector-backed collections.'],
-                  ['04', 'QUERY', 'Commands retrieve context for grounded answers.'],
-                  ['05', 'STORE', 'Backend integration keeps summaries and state usable.'],
-                ].map(([number, title, copy], index) => <div className="machine-node" key={title}><span>{number}</span><div><strong>{title}</strong><small>{copy}</small></div>{index < 4 && <i />}</div>)}
-              </div>
-            </Reveal>
-
-            <Reveal className="build-dossier build-dossier--kargo">
-              <div className="signal-machine signal-machine--kargo" aria-label="Kargo repository analysis pipeline">
-                <div className="machine-title"><span>REPOSITORY SCAN</span><small>from GitHub URL to deployable clues</small></div>
-                <div className="repo-terminal"><span>$ kargo inspect github.com/you/app</span><b>✓ shallow clone complete</b><b>✓ source extensions selected</b><b>✓ port candidates extracted</b><b>✓ persistence paths normalized</b><strong>ready for Docker proposal_</strong></div>
-                <div className="kargo-output"><span>OUTPUT SLOTS</span><div><span className="output-rune">DF</span><strong>Dockerfile</strong></div><div><span className="output-rune">DC</span><strong>Compose</strong></div></div>
-              </div>
-              <div className="dossier-copy">
-                <div className="dossier-number" id="kargo-dossier">BUILD 02 · GDG VIT</div><ProjectArtifact project={projects[2]} />
-                <h3>Kargo</h3>
-                <p className="dossier-lede">A deployment platform that connects repositories, container configuration, resource choices, and Kubernetes-backed application management.</p>
-                <div className="contribution-callout"><span>NOEL’S BUILD PATH</span><p>Noel contributed to repository inspection and the AI Dockerization path: cloning bounded repositories, selecting relevant code, mapping folder structure, extracting port clues, and finding persistent-volume signals across Dockerfiles, Compose, databases, uploads, and filesystem paths.</p></div>
-                <p className="collab-note"><Check /> Built collaboratively. Much of the planning and shared implementation happened beyond what individual commit history captures.</p>
-                <div className="tag-row">{projects[2].stack.map((item) => <span key={item}>{item}</span>)}</div>
-                <div className="dialog-actions">{projects[2].links.map((link) => <a key={link.href} className="text-link" href={link.href} target="_blank" rel="noreferrer">{link.label}<ArrowUpRight /></a>)}</div>
-              </div>
-            </Reveal>
-
-            <Reveal className="first-build">
-              <ProjectArtifact project={projects[3]} /><div><span className="eyebrow">THE FIRST REDSTONE CONTRAPTION</span><h3>A Discord bot built one command at a time.</h3><p>In Grade 11, before Noel properly knew Python, an experiment became the bot his friends used for music, games, moderation, and online-class reminders with the right links. It is private, imperfect, and still one of his favorite builds because people actually loved using it.</p></div><button className="text-link" onClick={() => setSelectedProject(projects[3])}>Open memory<ArrowUpRight /></button>
-            </Reveal>
-          </div>
-        </section>
-
-        <section id="research" className="world-section research-section research-section--deep" data-world-section="4">
-          <div className="section-inner section-inner--wide">
-            <Reveal className="research-intro">
-              <div className="research-copy content-panel content-panel--dark">
-                <div className="eyebrow">BELOW BEDROCK · ARACHNE → PHISHGUARD</div>
-                <h2>A systems experiment<br />became a research instrument.</h2>
-                <p className="large-copy">Arachne began as Noel’s first serious systems-design project: a Rust crawler that separated coordination, crawling, queueing, and persistence so work could scale horizontally.</p>
-                <p>The crawler was later used to gather DOM structure from phishing and legitimate sites. Those pages became graphs for a model combining DOM topology with URL features. The immediate dataset never approached the crawler’s intended ceiling; learning the architecture was part of the point.</p>
-                <a className="text-link" href="https://github.com/Noel-Alex/Arachne" target="_blank" rel="noreferrer">Inspect Arachne source<ArrowUpRight /></a>
-              </div>
-              <div className="arachne-diagram" aria-label="Arachne crawler architecture">
-                <div className="web-node"><span>SEEDS</span><small>URL frontier</small></div><ArrowDown />
-                <div className="kafka-bus"><span>KAFKA</span><strong>urls-to-crawl</strong></div><ArrowDown />
-                <div className="worker-fleet"><span>RUST WORKER FLEET</span><div>{['fetch', 'parse', 'discover', 'return'].map((x) => <b key={x}>{x}</b>)}</div></div><ArrowDown />
-                <div className="kafka-bus"><span>KAFKA</span><strong>crawl-results</strong></div><ArrowDown />
-                <div className="db-node"><span>COORDINATOR + SCYLLADB</span><small>batch · deduplicate · enqueue</small></div>
-              </div>
-            </Reveal>
-
-            <Reveal className="phishguard-case">
-              <div className="phishguard-copy">
-                <div className="eyebrow">EXPERIMENT LOG · PRIVATE MODEL</div>
-                <h3>PhishGuard: topology meets URL signals.</h3>
-                <p>The model work is not published, and the internal paper is not offered for download. The results below come from Noel’s held-out evaluation; the caveat is shown beside them because it matters as much as the score.</p>
-                <div className="metric-rack metric-rack--large"><div><span>68,175</span><small>collected examples</small></div><div><span>13,635</span><small>held-out examples</small></div><div><span>0.99</span><small>phishing recall</small></div><div><span>0.94</span><small>phishing precision</small></div></div>
-              </div>
-              <div className="model-viz" aria-label="DOM graph model illustration">
-                <span className="model-viz__label">DOM GRAPH</span><img className="model-viz__artifact" src={`${import.meta.env.BASE_URL}assets/artifact-arachne.webp`} alt="" />
-                {[0, 1, 2, 3, 4, 5, 6, 7].map((node) => <i key={node} style={{ '--node': node } as React.CSSProperties} />)}
-                <div className="model-viz__core"><Zap /><strong>GAT</strong><small>topology + URL features</small></div>
-                <div className="model-output"><span>SAFE</span><b>or</b><span>PHISHING</span></div>
-              </div>
-              <div className="caveat"><strong>THE IMPORTANT FAILURE MODE</strong><p>The legitimate class leaned heavily on globally popular, high-quality sites. That made rough but legitimate pages underrepresented, so bare-minimum HTML could be misclassified as phishing. These numbers validate an experiment—not a production detector.</p></div>
-            </Reveal>
-          </div>
-          <button className="ender-eye ender-eye--two" onClick={() => collectEye(2)} aria-label="Collect hidden Eye of Ender two"><span className="ender-eye-glyph">◈</span></button>
-        </section>
-
-        <section id="community" className="world-section community-section community-section--long" data-world-section="5">
-          <div className="section-inner section-inner--wide">
-            <Reveal className="section-heading section-heading--light"><div><div className="eyebrow">HERO OF THE VILLAGE</div><h2>The best builds are multiplayer.</h2></div><p>Senior Core Member, AI/ML lead in practice, event organizer, technical judge, recruiter, curriculum designer, and friend.</p></Reveal>
-            <Reveal className="community-grid community-grid--gallery">
-              <div className="event-gallery">
-                <figure className="event-photo event-photo--landscape"><img src={`${import.meta.env.BASE_URL}assets/devjams-team-srgb.jpg`} alt="Noel and the GDG VIT DevJams team wearing matching Hello Kitty pyjamas" /><div className="thats-noel"><span>Noel</span><span className="thats-noel__arrow">↙</span></div><figcaption><span>DEVJAMS ’25</span> A late-night memory with the team.</figcaption></figure>
-                <figure className="event-photo event-photo--portrait"><img src={`${import.meta.env.BASE_URL}assets/devjams-portrait-srgb.jpg`} alt="Noel with GDG VIT teammates during DevJams 2025" /><figcaption>Hackathons are serious. The uniform did not have to be.</figcaption></figure>
-              </div>
-              <div className="community-ledger community-ledger--rich">
-                <article><span className="ledger-number">4,700</span><div><strong>The first doorway</strong><p>Applicants in the selection process through which Noel joined as the only new AI/ML junior core member.</p></div></article>
-                <article><span className="ledger-number">≈5,000</span><div><strong>Building the next party</strong><p>Applicants helped evaluate in a later recruitment cycle; Noel personally assessed about 256 through tests, projects, and interviews.</p></div></article>
-                <article><span className="ledger-number">400+</span><div><strong>One room, difficult ideas</strong><p>Students reached as sole speaker and curriculum designer for a session on transformer architecture and AlphaFold.</p></div></article>
-                <a className="watch-talk" href={socialLinks.talk} target="_blank" rel="noreferrer"><Play />Watch “Inside Google’s DeepMind”<ArrowUpRight /></a>
-              </div>
-            </Reveal>
-            <Reveal className="gdg-timeline">
-              <div className="timeline-line" />
-              <article><span>2023</span><strong>Joined the guild</strong><p>Selected into AI/ML and helped ship UltraChat plus three major events.</p></article>
-              <article><span>2024–25</span><strong>Built the next season</strong><p>DevJams, Women Techies, and Hexathon again; Kargo; judging, planning, and recruitment.</p></article>
-              <article><span>NOW</span><strong>Senior Core</strong><p>Helping lead AI/ML and recruiting the next cohort to carry the community forward.</p></article>
-            </Reveal>
-            <div className="event-row"><span>DEVJAMS</span><span>WOMEN TECHIES</span><span>HEXATHON</span><small>Planning · operations · technical work · judging</small></div>
-          </div>
-          <button className="ender-eye ender-eye--three" onClick={() => collectEye(3)} aria-label="Collect hidden Eye of Ender three"><span className="ender-eye-glyph">◈</span></button>
-        </section>
-
-        <section id="contact" className="world-section contact-section" data-world-section="6">
-          <div className="section-inner contact-layout">
-            <div className="contact-copy">
-              <div className="eyebrow">THE PORTAL IS OPEN</div>
-              <h2>Let’s build something<br /><span>unreasonably good.</span></h2>
-              <p>For remote work, ambitious research, systems that need careful thinking, or a very serious conversation about Minecraft server optimization.</p>
-              <div className="contact-actions"><a className="primary-button" href={socialLinks.email}><Mail />Send Noel an email<ArrowUpRight /></a><a className="secondary-button" href={`${import.meta.env.BASE_URL}Noel-Alex-Resume.pdf`} target="_blank" rel="noreferrer">View résumé<ExternalLink /></a></div>
-              <div className="social-row"><a href={socialLinks.github} target="_blank" rel="noreferrer"><Github />GitHub</a><a href={socialLinks.linkedin} target="_blank" rel="noreferrer"><Linkedin />LinkedIn</a><a href={socialLinks.email}><Mail />Email</a></div>
-            </div>
-            <aside className="portal-card pixel-panel"><span className="portal-rune">◈</span><span>PLAYER CARD</span><strong>Noel Alex</strong><p>B.Tech Computer Science<br />Data Science specialization<br />VIT Vellore · 2027</p><div><MapPin />Vellore / Riyadh / online</div>{eyes.size === 3 && <div className="secret-unlocked"><Sparkles />Portal stabilized — secret found.</div>}</aside>
-          </div>
-          <footer><span>Built with React, motion, and far too many blocks. Music: “Into the Caves” by Umplix, CC0.</span><span>© {new Date().getFullYear()} Noel Alex · Not affiliated with Mojang or Microsoft.</span></footer>
-        </section>
-      </main>
-
-      <div className="hotbar" aria-label="World navigation">
-        {sections.map((section, index) => <button key={section.id} className={active === index ? 'is-selected' : ''} onClick={() => jumpTo(section.id)} aria-label={`Go to ${section.short}`}><span className="hotbar-number">{index + 1}</span><span className="hotbar-glyph">{section.short.slice(0, 2).toUpperCase()}</span><small>{section.short}</small></button>)}
-      </div>
-      <button className="creeper-whisper" onClick={() => showToast({ title: 'That’sssss enough clicking', detail: 'No portfolios were exploded.' })} aria-label="A suspicious creeper"><span className="creeper-face">▪ ▪<br /> ▀ </span><small>psst…</small></button>
-      {creative && <div className="creative-badge"><Sparkles />CREATIVE MODE</div>}
-      <ProjectDialog project={selectedProject} onClose={() => setSelectedProject(null)} />
-      <Inventory open={inventoryOpen} onClose={() => setInventoryOpen(false)} onSelect={setSelectedProject} />
-    </div>
-  )
+  return <PortfolioRouter><RoutedApp /></PortfolioRouter>
 }
