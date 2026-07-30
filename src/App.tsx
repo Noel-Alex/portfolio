@@ -542,7 +542,7 @@ function CommunityPage() {
       <div className="page-shell">
         <SectionIntro kicker="GDG VIT / MULTIPLAYER WORLD" title={<>The best builds<br /><em>are multiplayer.</em></>} copy="Senior Core Member, AI/ML lead in practice, event organiser, technical judge, recruiter, curriculum designer, and friend." />
         <section className="community-photo">
-          <Reveal className="event-frame"><img src={baseAsset('devjams-team-srgb.jpg')} alt="Noel and the GDG VIT DevJams team wearing matching Hello Kitty pyjamas" /><span className="noel-pointer"><strong>Noel</strong><i /></span><figcaption><span>DEVJAMS '25</span><strong>A late-night memory with the team.</strong></figcaption></Reveal>
+          <Reveal className="event-frame"><img src={baseAsset('devjams-team-srgb.jpg')} alt="Noel and the GDG VIT DevJams team wearing matching Hello Kitty pyjamas" /><span className="noel-pointer"><strong>Noel</strong><svg viewBox="0 0 180 120" aria-hidden="true"><path d="M170 8 C 125 20, 65 52, 12 106" /><path d="M12 106 L 17 87 M 12 106 L 32 103" /></svg></span><figcaption><span>DEVJAMS '25</span><strong>A late-night memory with the team.</strong></figcaption></Reveal>
           <Reveal className="community-ledger" delay={0.12}>
             <span className="eyebrow">THE SERVER LEDGER</span>
             <article><strong>4,700</strong><p>applicants in the process through which Noel joined as the only new AI/ML junior core member.</p></article>

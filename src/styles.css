@@ -418,9 +418,8 @@ kbd { min-width: 20px; display: inline-grid; place-items: center; margin-right: 
 .event-frame figcaption { position: absolute; left: 38px; bottom: 27px; display: grid; gap: 4px; }
 .event-frame figcaption span { color: #a45c36; font: 700 10px var(--mono); letter-spacing: .1em; }
 .event-frame figcaption strong { font: 600 20px var(--pixel); }
-.noel-pointer { position: absolute; top: 20%; right: 4.5%; display: grid; justify-items: end; color: #fff1a2; text-shadow: 2px 2px 0 #5f3e27; font: 600 20px var(--pixel); transform: rotate(-2deg); }
-.noel-pointer i { display: block; width: 72px; height: 3px; margin-top: 5px; background: currentColor; transform: rotate(132deg); transform-origin: right; box-shadow: 1px 2px 0 #5f3e27; }
-.noel-pointer i::after { content: ''; position: absolute; left: -2px; top: -5px; width: 11px; height: 11px; border-left: 3px solid currentColor; border-bottom: 3px solid currentColor; transform: rotate(45deg); }
+.noel-pointer { position: absolute; top: 25%; right: 3.5%; display: grid; justify-items: end; color: #fff1a2; text-shadow: 2px 2px 0 #5f3e27; font: 600 20px var(--pixel); transform: rotate(-2deg); pointer-events: none; }
+.noel-pointer svg { width: 180px; height: 120px; margin-top: -2px; overflow: visible; fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: square; filter: drop-shadow(2px 2px 0 #5f3e27); }
 .community-ledger { padding: 45px; background: rgba(255,249,226,.77); box-shadow: 9px 10px 0 rgba(71,76,42,.16); }
 .community-ledger article { display: grid; grid-template-columns: 115px 1fr; gap: 20px; align-items: center; padding: 28px 0; border-bottom: 1px solid #c9c7a2; }
 .community-ledger article strong { color: #4d8646; font: 600 44px/.8 var(--pixel); }
@@ -562,7 +561,8 @@ kbd { min-width: 20px; display: inline-grid; place-items: center; margin-right: 
   .community-timeline::before { left: 35px; right: auto; top: 0; bottom: 0; width: 3px; height: auto; }
   .timeline-stop { margin-left: 50px; }
   .timeline-stop > i { left: -57px; top: 28px; }
-  .noel-pointer { right: 1%; top: 16%; font-size: 16px; }
+  .noel-pointer { right: 1%; top: 23%; font-size: 16px; }
+  .noel-pointer svg { width: 125px; height: 85px; }
   .contact-copy h1 { font-size: 53px; }
 }
 
