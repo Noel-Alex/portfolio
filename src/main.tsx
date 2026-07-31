@@ -4,6 +4,7 @@ import '@fontsource/pixelify-sans/500.css'
 import '@fontsource/pixelify-sans/600.css'
 import '@fontsource-variable/manrope'
 import '@fontsource-variable/jetbrains-mono'
+import '@fontsource-variable/fraunces'
 import App from './App'
 import './styles.css'
 
