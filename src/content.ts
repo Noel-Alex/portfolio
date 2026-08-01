@@ -80,7 +80,7 @@ export const projects: Project[] = [
     item: 'jukebox',
     artifact: 'artifact-kermit.webp',
     status: 'Personal · private archive',
-    summary: 'A Grade 11 experiment that became the bot Noel and his friends actually used during remote school.',
+    summary: 'A Grade 11 experiment that became the bot my friends and I actually used during remote school.',
     contribution: 'Learned Python through music commands, games, moderation, and reminders that posted the correct online-class links. The code stays private; the memory matters more than the repository.',
     stack: ['Python', 'Discord.py', 'FFmpeg', 'APIs', 'Experimentation'],
     links: [],
