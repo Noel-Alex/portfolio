@@ -1,12 +1,11 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import '@fontsource/pixelify-sans/500.css'
-import '@fontsource/pixelify-sans/600.css'
-import '@fontsource-variable/manrope'
-import '@fontsource-variable/jetbrains-mono'
-import '@fontsource-variable/fraunces'
 import App from './App'
+import { tileCanvas } from './engine/textures'
 import './styles.css'
+
+// The GUI's stone buttons wear the same painted stone tile as the world.
+document.documentElement.style.setProperty('--tex-stone', `url(${tileCanvas('stone').toDataURL()})`)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

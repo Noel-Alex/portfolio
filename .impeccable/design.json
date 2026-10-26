@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-26T13:00:00Z",
+  "title": "Design System: Noel Alex — Modded Client",
+  "extensions": {
+    "colorMeta": {
+      "ink-yellow": { "role": "primary", "displayName": "Splash Yellow", "canonical": "#ffff55", "tonalRamp": ["#3f3f15", "#6b6b1f", "#99992a", "#c7c736", "#ffff55", "#ffff80", "#ffffaa", "#ffffd5"] },
+      "stone": { "role": "primary", "displayName": "Stone Grey", "canonical": "#6f6f6f", "tonalRamp": ["#262626", "#3a3a3a", "#525252", "#6f6f6f", "#8b8b8b", "#a9a9a9", "#c6c6c6", "#e0e0e0"] },
+      "tip-edge": { "role": "secondary", "displayName": "Tooltip Violet", "canonical": "#5000ff", "tonalRamp": ["#100010", "#28007f", "#3a00bf", "#5000ff", "#7a40ff", "#9f78ff", "#c5b0ff", "#e8deff"] },
+      "ink-green": { "role": "secondary", "displayName": "XP Green", "canonical": "#80ff20", "tonalRamp": ["#1e4008", "#3c8a10", "#5cc018", "#80ff20", "#9fff55", "#c0ff80", "#dcffb0", "#f0ffe0"] },
+      "page-accent": { "role": "tertiary", "displayName": "Guidebook Oxblood", "canonical": "#8c2b16", "tonalRamp": ["#2e0e07", "#4a170c", "#6b2111", "#8c2b16", "#b04a33", "#cc7a66", "#e3ab9e", "#f5dcd6"] },
+      "leather": { "role": "tertiary", "displayName": "Cover Leather", "canonical": "#6b3a1e", "tonalRamp": ["#1f1009", "#3d1f0f", "#542c16", "#6b3a1e", "#8c5532", "#b07d5a", "#d4ab8c", "#efdccd"] },
+      "panel": { "role": "neutral", "displayName": "Inventory Grey", "canonical": "#c6c6c6", "tonalRamp": ["#373737", "#555555", "#8b8b8b", "#a9a9a9", "#c6c6c6", "#dcdcdc", "#f0f0f0", "#ffffff"] },
+      "paper": { "role": "neutral", "displayName": "Cream Paper", "canonical": "#f3ead3", "tonalRamp": ["#2b1d12", "#6b5a45", "#9a8a70", "#c9b98f", "#e8dcbc", "#f3ead3", "#f8f2e4", "#fdfbf5"] },
+      "night-ground": { "role": "neutral", "displayName": "Night Ground", "canonical": "#0d1a33", "tonalRamp": ["#03060f", "#0d1a33", "#121a38", "#1b2450", "#2c3a66", "#46547f", "#7a88b0", "#b8c2dc"] }
+    },
+    "typographyMeta": {
+      "stat": { "displayName": "Stat", "purpose": "Measured headline numbers on guidebook number pages." },
+      "display": { "displayName": "Display", "purpose": "Guidebook titles and mod names." },
+      "headline": { "displayName": "Headline", "purpose": "Screen titles and guidebook section heads." },
+      "body": { "displayName": "Body", "purpose": "Guidebook and detail prose, about 62–72ch." },
+      "label": { "displayName": "Label", "purpose": "Tooltips, container labels, chat, MOTDs." }
+    },
+    "shadows": [
+      { "name": "bevel-raised", "value": "inset 2px 2px 0 #a9a9a9, inset -2px -4px 0 #3a3a3a", "purpose": "Buttons at rest; swap for pressed." },
+      { "name": "bevel-panel", "value": "inset 4px 4px 0 #ffffff, inset -4px -4px 0 #555555", "purpose": "Container panels." },
+      { "name": "bevel-sunken", "value": "inset 2px 2px 0 #373737, inset -2px -2px 0 #ffffff", "purpose": "Slots, advancement view, player preview." },
+      { "name": "book-lift", "value": "0 24px 48px -12px #000000cc", "purpose": "The guidebook floating over the world; the only soft shadow." },
+      { "name": "text-client", "value": "0.125em 0.125em 0 #3f3f3f", "purpose": "Text shadow on all GUI text over dark ground." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Entrances, toasts, hover lifts, bar fills." },
+      { "name": "ease-page", "value": "cubic-bezier(0.45, 0.05, 0.35, 1)", "purpose": "The 720ms 3D page-turn leaf." },
+      { "name": "world-filter", "value": "filter 700ms ease-out", "purpose": "World blur and dim changing between screens." },
+      { "name": "toast", "value": "5.2s slide in, hold, slide out", "purpose": "Advancement toasts." },
+      { "name": "reduced", "value": "html[data-motion='reduced'] → 1ms durations", "purpose": "Reduced motion keeps end events firing." }
+    ],
+    "breakpoints": [
+      { "name": "phone", "value": "760px" },
+      { "name": "book-spread", "value": "900px" },
+      { "name": "gui-scale-3", "value": "1200px × 760px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Stone Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Every menu action, in full, half, icon and auto widths.",
+      "html": "<button class=\"ds-btn\">Singleplayer</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; width: 400px; max-width: 100%; min-height: 40px; padding: 0 14px; border: 2px solid #000; background: #6f6f6f; box-shadow: inset 2px 2px 0 #a9a9a9, inset -2px -4px 0 #3a3a3a; color: #e0e0e0; font: 16px/1.1 Monocraft, ui-monospace, monospace; text-shadow: 0.125em 0.125em 0 #3f3f3f; cursor: pointer; } .ds-btn:hover, .ds-btn:focus-visible { background: #7d86b8; color: #ffff55; border-color: #fff; outline: none; } .ds-btn:active { box-shadow: inset 2px 2px 0 #3a3a3a, inset -2px -2px 0 #a9a9a9; } .ds-btn:disabled { background: #2c2c2c; color: #8a8a8a; box-shadow: none; cursor: default; }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Black client text field, as in the Mods search.",
+      "html": "<label class=\"ds-input\"><input placeholder=\"Search\" aria-label=\"Search\"></label>",
+      "css": ".ds-input { display: flex; align-items: center; height: 40px; padding: 0 10px; background: #000; border: 2px solid #a0a0a0; } .ds-input:focus-within { border-color: #fff; } .ds-input input { flex: 1; background: none; border: 0; outline: 0; color: #e0e0e0; caret-color: #fff; font: 16px Monocraft, ui-monospace, monospace; } .ds-input input::placeholder { color: #8a8a8a; }"
+    },
+    {
+      "name": "Hotbar",
+      "kind": "nav",
+      "refersTo": "slot",
+      "description": "Nine build slots; the selected one wears the white frame.",
+      "html": "<ol class=\"ds-hotbar\"><li><button class=\"ds-hot is-on\">1</button></li><li><button class=\"ds-hot\">2</button></li><li><button class=\"ds-hot\">3</button></li></ol>",
+      "css": ".ds-hotbar { list-style: none; margin: 0; padding: 0; display: flex; background: #00000080; border: 2px solid #1a1a1a; box-shadow: inset 0 0 0 2px #8a8a8a; } .ds-hot { width: 40px; height: 40px; background: none; border: 0; color: #fff; font: 11px Monocraft, monospace; box-shadow: inset 0 0 0 2px #00000040; cursor: pointer; } .ds-hot.is-on { outline: 4px solid #fff; outline-offset: -2px; box-shadow: 0 0 0 2px #000; position: relative; z-index: 1; } .ds-hot:focus-visible { outline: 3px solid #ffff55; outline-offset: -3px; }"
+    },
+    {
+      "name": "Item Tooltip",
+      "kind": "custom",
+      "refersTo": "tooltip",
+      "description": "Purple-edged tooltip for items, builds and advancements.",
+      "html": "<div class=\"ds-tip\"><strong>Rust</strong><span>HELIX · Sivana · Arachne</span></div>",
+      "css": ".ds-tip { display: grid; gap: 2px; width: max-content; max-width: 280px; padding: 6px 8px; background: #100010f2; border: 2px solid transparent; border-image: linear-gradient(#5000ff, #28007f) 1; outline: 2px solid #100010f2; color: #fff; font: 14px/1.35 Monocraft, monospace; text-shadow: 0.125em 0.125em 0 #3f3f3f; } .ds-tip span { color: #a8a8a8; }"
+    },
+    {
+      "name": "Inventory Slot",
+      "kind": "card",
+      "refersTo": "slot",
+      "description": "Sunken 36px slot inside a grey container panel.",
+      "html": "<div class=\"ds-panel\"><button class=\"ds-slot\" aria-label=\"Empty slot\"></button><button class=\"ds-slot\" aria-label=\"Empty slot\"></button></div>",
+      "css": ".ds-panel { display: inline-flex; padding: 14px; background: #c6c6c6; border: 2px solid #000; border-radius: 4px; box-shadow: inset 4px 4px 0 #fff, inset -4px -4px 0 #555; } .ds-slot { width: 36px; height: 36px; border: 0; background: #8b8b8b; box-shadow: inset 2px 2px 0 #373737, inset -2px -2px 0 #fff; position: relative; } .ds-slot:hover::after { content: ''; position: absolute; inset: 2px; background: #ffffff80; } .ds-slot:focus-visible { outline: 2px solid #ffff55; outline-offset: -2px; }"
+    },
+    {
+      "name": "Guidebook Page",
+      "kind": "custom",
+      "refersTo": "page",
+      "description": "Cream page with oxblood section head and measured stats.",
+      "html": "<article class=\"ds-page\"><h3>By the numbers</h3><p><strong>5.79×</strong> saxpy speedup on 8 threads</p></article>",
+      "css": ".ds-page { width: 360px; padding: 34px 38px; background: #f3ead3; color: #2b1d12; border: 14px solid #6b3a1e; border-radius: 10px; box-shadow: inset 0 0 0 3px #c89b3c; font: 16px/1.7 Monocraft, monospace; } .ds-page h3 { margin: 0 0 12px; font-size: 18px; color: #8c2b16; padding-bottom: 6px; border-bottom: 2px solid #c9b98f; } .ds-page strong { display: block; font-size: 34px; line-height: 1.1; color: #8c2b16; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Modded Client",
+    "overview": "The portfolio is not a website styled like Minecraft; it is a Minecraft client with a modpack installed. The title screen sits over a live, slowly orbiting voxel island; menus are the client's own menus; and the project writeups are Patchouli-style guidebooks with cream pages and a leather cover. Density follows the client: compact, pixel-exact GUI chrome with generous measure on reading surfaces. The world carries the color; the GUI stays grey and lets it through.",
+    "keyCharacteristics": [
+      "One typeface, Monocraft, for every role, rendered with the client's hard one-unit text shadow.",
+      "GUI depth is drawn with inset pixel bevels, never soft drop shadows.",
+      "The 3D world is always present behind the UI and changes treatment per screen.",
+      "Textures are painted in code from the world's own block tiles.",
+      "Every number on a page is a measured result; illustrations say they are illustrations."
+    ],
+    "rules": [
+      { "name": "The Client Palette Rule", "body": "GUI text uses Minecraft's formatting colors and nothing else. New accents belong to the world or the book, never to chrome.", "section": "colors" },
+      { "name": "The Book Keeps Its Ink Rule", "body": "Oxblood and cream live only inside guidebooks.", "section": "colors" },
+      { "name": "The One Face Rule", "body": "Monocraft carries every role. Hierarchy comes from size, weight and color.", "section": "typography" },
+      { "name": "The Shadow Is The Font Rule", "body": "GUI text on dark ground carries the client's hard text shadow; text on paper or light panels carries none.", "section": "typography" },
+      { "name": "The Bevel Not Blur Rule", "body": "Chrome never gets a soft drop shadow. A raised GUI element is raised by its bevel.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do take every new texture from the world's own painted tiles (tileCanvas) so GUI and world share one material.",
+      "Do keep numbers paired with their limits, and label illustrative demos as illustrations.",
+      "Do give every 3D interaction a DOM route (hotbar, Mods list, guidebook routes like /world/helix).",
+      "Do drive reduced motion from html[data-motion], so animations still end and fire their end events.",
+      "Do keep Monocraft subset to the characters the copy uses, and re-run the subset when copy adds a new glyph."
+    ],
+    "donts": [
+      "Don't add soft drop shadows, glass or gradients to GUI chrome; use the bevels.",
+      "Don't add a second typeface.",
+      "Don't use Mojang's textures, logo or sounds; everything is painted or synthesized in code.",
+      "Don't describe the methods behind Stretchy, Arachne + PhishGuard or PolySafe; outcomes and numbers only.",
+      "Don't put kicker labels above headings or helper text under controls; if a screen needs it, fix the screen."
+    ]
+  }
+}
