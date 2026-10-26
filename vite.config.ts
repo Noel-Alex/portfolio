@@ -6,5 +6,7 @@ export default defineConfig({
   base: '/portfolio/',
   build: {
     sourcemap: true,
+    // three.js lives in the lazy engine chunk; the menu bundle stays small
+    chunkSizeWarningLimit: 600,
   },
 })
