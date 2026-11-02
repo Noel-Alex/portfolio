@@ -40,7 +40,7 @@ export const education = [
 ]
 
 export const leadership: { title: string; when: string; body: string; link?: { label: string; href: string } }[] = [
-  { title: 'GDG VIT · Senior Technical Member, AI/ML', when: '2023–26', body: 'Helped run DevJams and Women Techies, supported recruitment from about 5,000 applicants (70–80 interviews of my own), and mentored juniors.' },
+  { title: 'GDG VIT · Senior Technical Member, AI/ML', when: '2023–26', body: 'Helped run DevJams and Women Techies, ran AI/ML recruitment end to end (256 shortlisted from about 5,000 applicants, about 80 given a project and interviewed by me), and mentored juniors.' },
   { title: 'Inside Google’s DeepMind', when: '2024', body: 'Designed and gave a recorded session for 400+ students, from transformers to AlphaFold.', link: { label: 'Watch the session', href: 'https://www.youtube.com/watch?v=SGLh-A3z4yI' } },
   { title: 'Head Boy · New Middle East International School', when: '2022–23', body: 'Coordinated student welfare, staff liaison and off-campus safety during the return to in-person school, and represented the school at a Middle East CBSE principals’ conference.' },
   { title: 'Riviera 2024, VIT', when: '2024', body: '1st place in arm wrestling and 2nd in powerlifting, in our brackets.' },

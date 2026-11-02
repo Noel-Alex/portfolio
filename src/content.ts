@@ -376,12 +376,12 @@ export const servers: Server[] = [
   {
     id: 'recruitment',
     name: 'Recruitment 2025',
-    motd: ['Helped evaluate ~5,000 applicants', 'About 256 assessed personally'],
-    players: '256/5000',
+    motd: ['~5,000 applicants, 256 on my AI/ML shortlist', '~80 interviewed, each with a project'],
+    players: '80/256',
     icon: ['oak_log_top', 'crafting_side', 'crafting_side'],
     ping: 3,
     body: [
-      'Picking the next cohort: about 5,000 applicants, roughly 256 of whom I assessed myself through tests, projects and interviews.',
+      'Picking the next cohort over three rounds. About 5,000 applicants took the main quiz and 256 made the AI/ML shortlist, which I ran end to end. My domain quiz cut that to about 80; I gave each of them a project and interviewed them.',
     ],
   },
   {
