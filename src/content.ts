@@ -2,7 +2,7 @@ import type { LandmarkId } from './engine/world'
 
 export type Link = { label: string; href: string }
 export type Stat = { value: string; label: string }
-export type Demo = 'helix' | 'sivana' | 'kargo' | 'ultrachat' | 'arachne' | 'polysafe' | 'aster'
+export type Demo = 'helix' | 'sivana' | 'kargo' | 'ultrachat' | 'phishgcn' | 'polysafe' | 'aster'
 /** An isometric block icon: top, left and right face tiles. */
 export type Icon = [string, string, string?]
 
@@ -52,26 +52,50 @@ export const projects: Project[] = [
   },
   {
     id: 'arachne',
-    name: 'Arachne + PhishGuard',
-    version: 'research · private',
-    summary: 'Distributed web capture, then phishing detection from page structure',
+    name: 'Arachne',
+    version: 'active · private',
+    summary: 'A configurable, high-performance web crawler in Rust',
     credit: 'Solo',
     year: '2025–26',
     landmark: 'arachne',
     icon: ['hedge', 'hedge', 'hedge'],
-    lede: 'A Rust capture system that runs on one laptop or across friends’ machines, built to collect a clean phishing dataset, plus a model that judges a page by its structure, not just its words.',
+    lede: 'A general-purpose crawler and page-capture platform. Point it at a site, a sitemap or a list of URLs, and it fetches over HTTP or renders in headless Chrome, keeping each page as raw HTML, rendered DOM, screenshot and network log.',
     body: [
-      'Phishing pages vanish within hours, so Arachne grabs them fast and from more than one vantage point.',
-      'My favourite result here is a mistake I caught. Random splits had the same domains in training and test, and the scores looked incredible. Split by domain, they came back down to an honest number.',
+      'It runs on one laptop with SQLite, a content-addressed blob store and a bundled NATS JetStream queue. Friends add capacity by running capture workers over Tailscale, and workers never touch the owner’s database.',
+      'Safety is part of the design: robots rules, per-job scope and budgets, and SSRF checks that re-run on every redirect hop.',
     ],
     stats: [
-      { value: '68,175', label: 'labelled pages in the first dataset' },
-      { value: '96.9%', label: 'of random-split test domains were also in training' },
-      { value: '0.79', label: 'PR-AUC on the leak-free split, best of four baselines (ROC-AUC 0.85)' },
+      { value: '181,755', label: 'live page captures collected for PhishGCN’s dataset' },
+      { value: '4', label: 'crawl modes: whole site, sitemap, URL list, forensic capture' },
+      { value: '5', label: 'artifacts per capture: raw HTML, rendered DOM, screenshot, network log, favicon' },
     ],
-    limits: 'Small test splits mean wide confidence intervals (0.64–0.92), and the legitimate pages lean toward popular sites.',
+    stack: ['Rust', 'NATS JetStream', 'SQLite', 'Headless Chrome', 'zstd', 'Tailscale'],
+    limits: 'The scale tier (Postgres, ScyllaDB, S3) is designed and partly built, not finished. I don’t quote pages per second until it’s measured end to end.',
     links: [],
-    demo: 'arachne',
+  },
+  {
+    id: 'phishgcn',
+    name: 'PhishGCN',
+    version: 'research · private',
+    summary: 'Phishing detection that starts by checking the labels',
+    credit: 'Solo',
+    year: '2026',
+    landmark: 'phishgcn',
+    icon: ['sculk', 'sculk', 'sculk'],
+    lede: 'A phishing-page detector trained on Arachne’s captures. The biggest finding came before any model: most pages reported as phishing aren’t phishing pages by the time anyone looks.',
+    body: [
+      'A feed says a URL is phishing; the page you fetch is often a takedown notice, a parked domain or a redirect. Train on those labels and the model learns the wrong thing, so I measured how wrong they are and trained around it.',
+      'The methods are part of a patent filing I’m preparing, so this page sticks to results.',
+    ],
+    stats: [
+      { value: '64.7%', label: 'of phishing-reported live captures were stand-ins, not phishing pages' },
+      { value: '0.724', label: 'PR-AUC on a hand-audited test set, up from 0.614 trained on feed labels alone' },
+      { value: '61.4%', label: 'recall at a 0.5% false-alarm target, at 79.4% precision' },
+    ],
+    stack: ['Python', 'PyTorch', 'Graph neural networks', 'Evaluation design'],
+    limits: 'The audited set is about 1,200 pages, so the interval is wide (PR-AUC 0.668–0.780), and it hasn’t been validated on fresh traffic yet.',
+    links: [],
+    demo: 'phishgcn',
     sealed: true,
   },
   {
@@ -128,7 +152,7 @@ export const projects: Project[] = [
   {
     id: 'polysafe',
     name: 'PolySafe',
-    version: 'pre-print · private',
+    version: 'research · private',
     summary: 'Drug-pair side-effect prediction, and knowing when to trust it',
     credit: 'Research lead',
     year: '2026',
@@ -137,7 +161,7 @@ export const projects: Project[] = [
     lede: 'Research on predicting the side effects of taking two drugs together, and on knowing when those predictions are safe to act on.',
     body: [
       'Most work in this area reports one impressive number. I care more about where that number holds up and where it falls apart.',
-      'It’s at the pre-print stage and stays private for now, so this page sticks to results.',
+      'It stays private for now, so this page sticks to results.',
     ],
     stats: [
       { value: '964', label: 'side-effect classes scored for every drug pair' },
@@ -251,24 +275,24 @@ export const projects: Project[] = [
 export const projectById = (id: string) => projects.find(p => p.id === id)
 
 export const landmarkBook: Partial<Record<LandmarkId, string>> = {
-  spawn: 'noel', stretchy: 'stretchy', arachne: 'arachne', helix: 'helix', sivana: 'sivana', polysafe: 'polysafe',
+  spawn: 'noel', stretchy: 'stretchy', arachne: 'arachne', phishgcn: 'phishgcn', helix: 'helix', sivana: 'sivana', polysafe: 'polysafe',
   aster: 'aster', petra: 'petra', kargo: 'kargo', ultrachat: 'ultrachat',
 }
 
 export const hotbar: { landmark: LandmarkId; label: string; icon: Icon }[] = [
   { landmark: 'stretchy', label: 'Stretchy', icon: ['me_side', 'me_drive', 'me_drive'] },
-  { landmark: 'arachne', label: 'Arachne + PhishGuard', icon: ['hedge', 'hedge', 'hedge'] },
+  { landmark: 'arachne', label: 'Arachne', icon: ['hedge', 'hedge', 'hedge'] },
+  { landmark: 'phishgcn', label: 'PhishGCN', icon: ['sculk', 'sculk', 'sculk'] },
   { landmark: 'helix', label: 'HELIX Lite', icon: ['brass_casing', 'andesite_casing', 'andesite_casing'] },
   { landmark: 'sivana', label: 'Sivana', icon: ['jukebox_top', 'jukebox_side', 'jukebox_side'] },
   { landmark: 'polysafe', label: 'PolySafe', icon: ['bricks', 'stone_bricks', 'stone_bricks'] },
   { landmark: 'aster', label: 'AsterLM Frontier', icon: ['beacon', 'beacon', 'beacon'] },
   { landmark: 'petra', label: 'Petra', icon: ['mycelium_top', 'mycelium_side', 'mycelium_side'] },
   { landmark: 'kargo', label: 'Kargo', icon: ['copper_roof', 'copper_block', 'copper_block'] },
-  { landmark: 'ultrachat', label: 'UltraChat', icon: ['oak_planks', 'bookshelf', 'bookshelf'] },
 ]
 
 export const landmarkName: Record<LandmarkId, string> = {
-  spawn: 'Noel', stretchy: 'Stretchy', arachne: 'Arachne + PhishGuard', helix: 'HELIX Lite', sivana: 'Sivana', polysafe: 'PolySafe',
+  spawn: 'Noel', stretchy: 'Stretchy', arachne: 'Arachne', phishgcn: 'PhishGCN', helix: 'HELIX Lite', sivana: 'Sivana', polysafe: 'PolySafe',
   aster: 'AsterLM Frontier', petra: 'Petra', kargo: 'Kargo', ultrachat: 'UltraChat', gdg: 'GDG VIT', portal: 'Open to work',
 }
 
@@ -412,7 +436,8 @@ export const advancementTabs: { id: string; title: string; icon: Icon; items: Ad
       { id: 'ultrachat', title: 'First Commit', desc: 'UltraChat, my first GDG build', icon: ['oak_planks', 'bookshelf', 'bookshelf'], x: 0, y: 1, date: '2023', book: 'ultrachat' },
       { id: 'kargo', title: 'Ship It', desc: 'Kargo: repository in, running app out', icon: ['copper_roof', 'copper_block', 'copper_block'], x: 1, y: 1, parent: 'ultrachat', date: '2024', book: 'kargo' },
       { id: 'sivana', title: 'Name That Tune', desc: 'Sivana, audio recognition in Rust', icon: ['jukebox_top', 'jukebox_side', 'jukebox_side'], x: 2, y: 0, parent: 'kargo', date: '2025', book: 'sivana' },
-      { id: 'arachne', title: 'Caught in the Web', desc: 'Arachne + PhishGuard', icon: ['hedge', 'hedge', 'hedge'], x: 2, y: 2, parent: 'kargo', date: '2025', book: 'arachne', frame: 'goal' },
+      { id: 'arachne', title: 'Caught in the Web', desc: 'Arachne, a crawler in Rust', icon: ['hedge', 'hedge', 'hedge'], x: 2, y: 2, parent: 'kargo', date: '2025', book: 'arachne', frame: 'goal' },
+      { id: 'phishgcn', title: 'Trust Issues', desc: 'PhishGCN: most phishing reports aren’t phishing', icon: ['sculk', 'sculk', 'sculk'], x: 3, y: 3, parent: 'arachne', date: '2026', book: 'phishgcn', frame: 'goal' },
       { id: 'stretchy', title: 'Total Recall', desc: 'Stretchy, the evidence archive', icon: ['me_side', 'me_drive', 'me_drive'], x: 3, y: 2, parent: 'arachne', date: '2026', book: 'stretchy', frame: 'challenge' },
       { id: 'helix', title: 'Proof of Work', desc: 'HELIX Lite, a compiler that shows its proof', icon: ['brass_casing', 'andesite_casing', 'andesite_casing'], x: 3, y: 0, parent: 'sivana', date: '2026', book: 'helix', frame: 'goal' },
       { id: 'aster', title: 'Beaconator', desc: 'AsterLM Frontier on a laptop GPU', icon: ['beacon', 'beacon', 'beacon'], x: 4, y: 0, parent: 'helix', date: '2026', book: 'aster' },
@@ -446,7 +471,7 @@ export const achievements = [
   { id: 'world', title: 'Hello, World', desc: 'Enter the world', icon: ['grass_top', 'grass_side', 'grass_side'] as Icon },
   { id: 'book', title: 'Bookworm', desc: 'Open a guidebook', icon: ['oak_planks', 'bookshelf', 'bookshelf'] as Icon },
   { id: 'helix', title: 'Benchmark Enjoyer', desc: 'Read the HELIX guidebook', icon: ['brass_casing', 'andesite_casing', 'andesite_casing'] as Icon },
-  { id: 'maze', title: 'Caught in the Web', desc: 'Visit the hedge maze', icon: ['hedge', 'hedge', 'hedge'] as Icon },
+  { id: 'maze', title: 'Caught in the Web', desc: 'Reach the heart of the hedge maze', icon: ['hedge', 'hedge', 'hedge'] as Icon },
   { id: 'music', title: 'Sound of Music', desc: 'Visit the jukebox studio', icon: ['jukebox_top', 'jukebox_side', 'jukebox_side'] as Icon },
   { id: 'inventory', title: 'Taking Inventory', desc: 'Open your inventory', icon: ['crafting_top', 'crafting_side', 'crafting_side'] as Icon },
   { id: 'craft', title: 'Benchmarking', desc: 'Craft a project from its parts', icon: ['crafting_top', 'crafting_side', 'crafting_side'] as Icon },

@@ -1,14 +1,14 @@
-import { StrictMode } from 'react'
+import { StrictMode, type ComponentType } from 'react'
 import { createRoot } from 'react-dom/client'
-import App from './App'
-import { tileCanvas } from './engine/textures'
-import './styles.css'
+import { initAnalytics } from './analytics'
+import { groupOf, parse } from './ui/router'
 
-// The GUI's stone buttons wear the same painted stone tile as the world.
-document.documentElement.style.setProperty('--tex-stone', `url(${tileCanvas('stone').toDataURL()})`)
-
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+// The readable portfolio and the 3D client are separate bundles; a reader never downloads three.js.
+const app = groupOf(parse(window.location.pathname))
+initAnalytics(app)
+// two separate import() calls: inside one ternary, Vite's preload wrapper attaches the game's CSS to both
+const loadSite = () => import('./site/Site')
+const loadGame = () => import('./game')
+const load: Promise<{ default: ComponentType }> = app === 'site' ? loadSite() : loadGame()
+const root = createRoot(document.getElementById('root')!)
+load.then(({ default: App }) => root.render(<StrictMode><App /></StrictMode>))

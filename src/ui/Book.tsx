@@ -3,6 +3,7 @@ import { links, player, projectById, type Project } from '../content'
 import { paintSkin } from '../engine/skin'
 import { DemoView } from './demos'
 import { BlockIcon, McButton, PixelIcon } from './gui'
+import { navigate } from './router'
 import { sfx } from './sound'
 import { store } from './store'
 
@@ -70,9 +71,11 @@ function projectPages(p: Project, reduced: boolean): Page[] {
     node: (
       <>
         {p.limits && <><h3>Honest limits</h3><p>{p.limits}</p></>}
-        {p.links.length > 0
-          ? <div className="page-links">{p.links.map(l => <McButton key={l.href} size="auto" href={l.href} external>{l.label} <PixelIcon name="link" size={12} /></McButton>)}</div>
-          : <p className="page-sealed"><PixelIcon name="lock" size={14} /> The source is private for now. Happy to walk through it in person.</p>}
+        <div className="page-links">
+          <McButton size="auto" onClick={() => navigate({ screen: 'project', id: p.id })}>Full case study <PixelIcon name="book" size={12} /></McButton>
+          {p.links.map(l => <McButton key={l.href} size="auto" href={l.href} external>{l.label} <PixelIcon name="link" size={12} /></McButton>)}
+        </div>
+        {p.links.length === 0 && <p className="page-sealed"><PixelIcon name="lock" size={14} /> The source is private for now. Happy to walk through it in person.</p>}
       </>
     ),
   })

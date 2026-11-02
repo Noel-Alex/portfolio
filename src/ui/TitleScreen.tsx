@@ -11,7 +11,10 @@ export function TitleScreen({ reduced, status }: { reduced: boolean; status: 'lo
       <nav className="title-menu" aria-label="Main menu">
         <McButton onClick={() => navigate({ screen: 'world' })} disabled={status !== 'ready'} autoFocus>{status === 'ready' ? 'Singleplayer' : status === 'loading' ? 'Generating world…' : 'Singleplayer needs WebGL'}</McButton>
         <McButton onClick={() => navigate({ screen: 'multiplayer' })}>Multiplayer</McButton>
-        <McButton onClick={() => navigate({ screen: 'mods' })}>Mods</McButton>
+        <div className="title-pair">
+          <McButton size="half" onClick={() => navigate({ screen: 'mods' })}>Mods</McButton>
+          <McButton size="half" onClick={() => navigate({ screen: 'home' })}>Portfolio</McButton>
+        </div>
         <div className="title-row">
           <McButton size="icon" href={links.resume} external label="Resume (PDF)"><PixelIcon name="book" size={20} /></McButton>
           <McButton size="half" onClick={() => navigate({ screen: 'options' })}>Options…</McButton>

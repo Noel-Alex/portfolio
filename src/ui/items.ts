@@ -150,7 +150,8 @@ export const recipes: Recipe[] = [
   { project: 'kargo', items: ['typescript', 'python', 'docker', 'kubernetes', 'langchain'] },
   { project: 'ultrachat', items: ['python', 'llamaindex', 'chromadb', 'langchain', 'docker', 'discord'] },
   { project: 'stretchy', items: [], sealed: true },
-  { project: 'arachne', items: [], sealed: true },
+  { project: 'arachne', items: ['rust', 'redstone', 'clock'] },
+  { project: 'phishgcn', items: [], sealed: true },
   { project: 'polysafe', items: [], sealed: true },
 ]
 

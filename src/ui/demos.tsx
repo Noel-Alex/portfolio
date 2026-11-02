@@ -174,7 +174,7 @@ export function DemoView({ demo, reduced }: { demo: Demo; reduced: boolean }) {
     case 'kargo': return <KargoDemo reduced={reduced} />
     case 'ultrachat': return <UltraDemo reduced={reduced} />
     case 'aster': return <AsterDemo />
-    case 'arachne': return (
+    case 'phishgcn': return (
       <SplitDemo
         title={['Random split', 'Split by domain']}
         a={[96.9, 0.977]} b={[0, 0.793]}

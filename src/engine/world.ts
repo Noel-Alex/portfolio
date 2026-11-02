@@ -52,7 +52,7 @@ export type Decor =
   | { type: 'bed'; pos: Vec3; rot: number }
   | { type: 'waterfall'; x: number; z0: number; z1: number; top: number; bottom: number }
 
-export type LandmarkId = 'spawn' | 'stretchy' | 'sivana' | 'arachne' | 'petra' | 'portal' | 'ultrachat' | 'gdg' | 'polysafe' | 'kargo' | 'helix' | 'aster'
+export type LandmarkId = 'spawn' | 'stretchy' | 'sivana' | 'arachne' | 'phishgcn' | 'petra' | 'portal' | 'ultrachat' | 'gdg' | 'polysafe' | 'kargo' | 'helix' | 'aster'
 
 export type Landmark = {
   id: LandmarkId
@@ -333,7 +333,7 @@ export function generateWorld() {
     decor.push({ type: 'villager', pos: [x + 7, g + 1, z - 4], rot: 3.4, robe: '#5a8a3a' })
     decor.push({ type: 'lantern', pos: [x - 4, g + 1, z - 5], post: true })
     decor.push({ type: 'lantern', pos: [x + 4, g + 1, z - 5], post: true })
-    lm('gdg', [S, [C + 2, z - 9]], [x - 11, g, z - 10], [x + 11, g + 6, z - 3], 0.1, 0.55, 30)
+    lm('gdg', [S, [C + 2, z - 9]], [x - 4, g, z - 10], [x + 4, g + 3, z - 4], 0.1, 0.55, 30)
     lm('ultrachat', [S, [C + 2, z - 9], [x + 1, lz0 - 3]], [lx0, g, lz0], [lx1, g + 9, lz1], 0.2, 0.42, 22)
   }
 
@@ -434,6 +434,9 @@ export function generateWorld() {
     }
     decor.push({ type: 'emitter', kind: 'firefly', pos: [x, g + 5, z], radius: 11, count: 70 })
     lm('arachne', [S, NH, [C - 8, C - 2], [x + 7, z]], [x - 6, g, z - 6], [x + 6, g + 4, z + 6], 1.2, 0.68, 26)
+    // PhishGCN waits at the heart of the maze, beside the spider; the player has to find the way in
+    const heart = ([[1, 0], [-1, 0], [0, 1], [0, -1]] as [number, number][]).find(([dx, dz]) => world.get(x + dx, g + 1, z + dz) !== B.hedge) ?? [1, 0]
+    lm('phishgcn', [[x + heart[0], z + heart[1]]], [x - 1, g, z - 1], [x + 1, g + 2, z + 1], 1.2, 0.95, 14)
   }
 
   // Stretchy: an Applied-Energistics vault of glowing drives.
