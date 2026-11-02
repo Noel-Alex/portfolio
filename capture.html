@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Diorama capture (dev only)</title>
+    <style>body { margin: 0; padding: 16px; font: 14px system-ui; background: #888; } img { width: 240px; margin: 4px; background: #fff3; }</style>
+  </head>
+  <body>
+    <p id="status">Rendering…</p>
+    <div id="out"></div>
+    <script type="module">
+      // Dev-only: renders each build as an isometric diorama and saves it to public/builds/.
+      // Run `npm run dev`, open /portfolio/capture.html, wait for "Done".
+      import { renderDiorama } from '/src/engine/diorama.ts'
+      const ids = ['stretchy', 'arachne', 'phishgcn', 'helix', 'sivana', 'polysafe', 'aster', 'petra', 'kargo', 'ultrachat', 'gdg', 'portal', 'spawn']
+      const tune = { phishgcn: { margin: 6, yaw: -Math.PI * 0.75 }, arachne: { margin: 2 }, sivana: { margin: 3 }, spawn: { margin: 2 }, gdg: { of: 'gdg', margin: 2 } }
+      const status = document.getElementById('status')
+      for (const id of ids) {
+        status.textContent = `Rendering ${id}…`
+        await new Promise(r => setTimeout(r, 30))
+        const url = renderDiorama(id, 800, tune[id] ?? {})
+        const img = new Image(); img.src = url; img.title = id
+        document.getElementById('out').append(img)
+        await fetch(`/__capture?id=${id}`, { method: 'POST', body: url })
+      }
+      status.textContent = 'Done'
+    </script>
+  </body>
+</html>

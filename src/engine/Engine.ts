@@ -4,11 +4,13 @@ import { generateWorld, C, Y0, type LandmarkId, type Landmark, type VoxelWorld }
 import { meshWorld } from './mesher'
 import { buildDecor, glowSprites, makeClouds, makeSky, Particles, type Updatable } from './effects'
 import { makeCreeper, makePlayer, makeSpider, makeVillager, type Biped } from './models'
-import { SOLID } from './blocks'
+import { BLOCKS, SOLID } from './blocks'
+import { findPath, settle, smooth, standable, type Cell } from './nav'
 
 export type Quality = 'fancy' | 'fast'
 export type Mode = 'title' | 'world'
 export type PickId = LandmarkId | 'player'
+export type View = 'third' | 'first'
 
 type Listener = {
   hover?: (id: PickId | null) => void
@@ -16,6 +18,8 @@ type Listener = {
   arrive?: (id: LandmarkId) => void
   depart?: () => void
   event?: (name: 'creeper' | 'void' | 'walk' | 'jump') => void
+  /** Pointer lock ended without the page asking (the visitor pressed Esc). */
+  unlock?: () => void
 }
 
 type Rig = { target: THREE.Vector3; yaw: number; pitch: number; dist: number }
@@ -54,6 +58,15 @@ export class Engine {
   private playerYaw = 0
   private walkPhase = 0
   private path: THREE.Vector3[] = []
+  view: View = 'third'
+  /** First-person look direction; the body faces the same way. */
+  private look = { yaw: 0, pitch: 0 }
+  private lookGoal: { yaw: number; pitch: number } | null = null
+  private stick = { x: 0, y: 0 }
+  private locked = false
+  private releasing = false
+  private camClip = 110
+  private bob = 0
   private pathTarget: LandmarkId | null = null
   private at: LandmarkId | null = 'spawn'
   private vy = 0
@@ -201,46 +214,80 @@ export class Engine {
     if (mode === this.mode) return
     this.mode = mode
     if (mode === 'world') {
-      const to = this.followRig(0.32, 13, this.playerYaw + 0.6)
-      this.flyTo(to, this.reduced ? 0 : 2.6)
+      if (this.view === 'first') { this.look = { yaw: this.playerYaw, pitch: -0.08 }; this.flyTo(this.eyeRig(), this.reduced ? 0 : 2.6) }
+      else this.flyTo(this.followRig(0.32, 13, this.playerYaw + 0.6), this.reduced ? 0 : 2.6)
     } else {
+      this.releasePointer()
+      if (this.view === 'first') { this.rig = this.eyeRig(); this.goal = cloneRig(this.rig) }
       this.flyTo({ target: new THREE.Vector3(C, Y0 + 2, C), yaw: this.rig.yaw, pitch: 0.22, dist: 96 }, this.reduced ? 0 : 1.8)
       this.setHover(null)
     }
   }
 
-  /** Walk the player to a landmark along its route. */
+  /** Switch between the over-the-shoulder camera and the player's own eyes. */
+  setView(view: View) {
+    if (view === this.view) return
+    this.view = view
+    if (this.mode !== 'world') return
+    if (view === 'first') {
+      this.look = { yaw: this.playerYaw, pitch: -0.08 }
+      this.flyTo(this.eyeRig(), this.reduced ? 0 : 0.7)
+    } else {
+      this.releasePointer()
+      this.rig = this.eyeRig(); this.goal = cloneRig(this.rig)
+      this.flyTo(this.followRig(0.32, 13, this.look.yaw + Math.PI), this.reduced ? 0 : 0.8)
+    }
+  }
+
+  /** Analog movement from the touch joystick: x right, y forward, each -1..1. */
+  setStick(x: number, y: number) { this.stick.x = x; this.stick.y = y }
+
+  /** Capture the mouse for first-person look. Must be called from a click. */
+  lockPointer() {
+    if (this.view !== 'first' || this.mode !== 'world' || this.locked || matchMedia('(pointer: coarse)').matches) return
+    const p = this.canvas.requestPointerLock?.() as Promise<void> | undefined
+    p?.catch?.(() => { /* denied or too soon after an unlock */ })
+  }
+
+  releasePointer() {
+    if (!this.locked) return
+    this.releasing = true
+    document.exitPointerLock?.()
+  }
+
+  get pointerLocked() { return this.locked }
+
+  /** Walk the player to a landmark, routing around anything in the way. */
   travelTo(id: LandmarkId) {
     const target = this.landmark(id)
     if (this.at === id && this.path.length === 0) { this.arrive(id); return }
-    const waypoints: THREE.Vector3[] = []
-    const routes = this.landmarks.map(l => l.route)
-    let best = { d: Infinity, route: target.route, i: 0 }
-    for (const r of routes) r.forEach(([x, z], i) => {
-      const d = Math.hypot(x + 0.5 - this.playerPos.x, z + 0.5 - this.playerPos.z)
-      if (d < best.d) best = { d, route: r, i }
-    })
-    const v = ([x, z]: [number, number]) => new THREE.Vector3(x + 0.5, 0, z + 0.5)
-    const shared = best.route === target.route
-    if (shared) for (let i = best.i; i < target.route.length; i++) waypoints.push(v(target.route[i]))
-    else {
-      for (let i = best.i; i >= 0; i--) waypoints.push(v(best.route[i]))
-      for (let i = 1; i < target.route.length; i++) waypoints.push(v(target.route[i]))
-    }
-    this.path = waypoints
+    if (!this.walkTo({ x: target.door[0], y: target.door[1], z: target.door[2] })) { this.teleport(id); return }
     this.pathTarget = id
-    this.at = null
-    this.emit('depart')
-    if (this.mode === 'world') this.goal = this.followRig(this.goal.pitch, Math.max(14, Math.min(this.goal.dist, 24)), this.goal.yaw)
+    if (this.mode === 'world' && this.view === 'third') this.goal = this.followRig(this.goal.pitch, Math.max(14, Math.min(this.goal.dist, 24)), this.goal.yaw)
     this.emit('event', 'walk')
   }
 
   teleport(id: LandmarkId) {
     const l = this.landmark(id)
     this.path = []
+    this.vy = 0
     this.playerPos.set(l.door[0] + 0.5, l.door[1], l.door[2] + 0.5)
     this.arrive(id)
-    if (this.mode === 'world') this.flyTo({ ...this.frameRig(l) }, 0)
+    if (this.mode === 'world' && this.view === 'third') this.flyTo({ ...this.frameRig(l) }, 0)
+  }
+
+  /** Plan a route to a cell. Returns false when the player can't get anywhere useful. */
+  private walkTo(goal: Cell) {
+    const p = this.playerPos
+    const fx = Math.floor(p.x); const fz = Math.floor(p.z)
+    const fy = settle(this.world, fx, fz, Math.floor(p.y + 0.01), 2) ?? Math.floor(p.y + 0.01)
+    const from = { x: fx, y: fy, z: fz }
+    const cells = smooth(this.world, from, findPath(this.world, from, goal))
+    if (!cells.length) return Math.abs(fx - goal.x) + Math.abs(fz - goal.z) < 2
+    this.path = cells.map(c => new THREE.Vector3(c.x + 0.5, c.y, c.z + 0.5))
+    this.pathTarget = null
+    if (this.at) { this.at = null; this.emit('depart') }
+    return true
   }
 
   /** Frame a landmark without walking (used by mods list hover). */
@@ -316,6 +363,17 @@ export class Engine {
     return { target: this.playerPos.clone().add(new THREE.Vector3(0, 1.4, 0)), yaw, pitch, dist }
   }
 
+  private eye() { return this.playerPos.clone().add(new THREE.Vector3(0, 1.62 + this.bob, 0)) }
+  private forward() { const { yaw, pitch } = this.look; return new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)) }
+
+  /** A rig whose camera sits at the player's eyes, so flights can end exactly in first person. */
+  private eyeRig(): Rig {
+    const d = 0.05
+    return { target: this.eye().addScaledVector(this.forward(), d), yaw: this.look.yaw + Math.PI, pitch: -this.look.pitch, dist: d }
+  }
+
+  private get firstPerson() { return this.mode === 'world' && this.view === 'first' && (!this.flight || this.rig.dist < 2.5) }
+
   private flyTo(to: Rig, dur: number) {
     if (dur <= 0) { this.rig = cloneRig(to); this.goal = cloneRig(to); this.flight = null; return }
     const from = cloneRig(this.rig)
@@ -335,7 +393,10 @@ export class Engine {
     const l = this.landmark(id)
     const c = new THREE.Vector3(); this.boxes.get(id)!.getCenter(c)
     this.playerYaw = Math.atan2(c.x - this.playerPos.x, c.z - this.playerPos.z)
-    if (this.mode === 'world') {
+    if (this.mode === 'world' && this.view === 'first') {
+      const eye = this.eye()
+      this.lookGoal = { yaw: this.playerYaw, pitch: THREE.MathUtils.clamp(Math.atan2(c.y - eye.y, Math.hypot(c.x - eye.x, c.z - eye.z)), -0.5, 0.5) }
+    } else if (this.mode === 'world') {
       const f = this.frameRig(l)
       f.target.lerp(this.playerPos.clone().add(new THREE.Vector3(0, 1.2, 0)), 0.35)
       this.flyTo(f, this.reduced ? 0 : 1.1)
@@ -358,34 +419,48 @@ export class Engine {
     this.emit('hover', id)
   }
 
-  private pick(): PickId | null {
-    this.raycaster.setFromCamera(this.pointer, this.camera)
+  /**
+   * What the pointer (or the crosshair) is on. A build counts only where the ray
+   * actually lands on it: on its blocks, or on the ground inside its footprint.
+   * Nested builds win over the ones around them (the spider inside the maze).
+   */
+  private pick(at?: THREE.Vector2): PickId | null {
+    this.raycaster.setFromCamera(at ?? (this.firstPerson ? new THREE.Vector2(0, 0) : this.pointer), this.camera)
+    this.raycaster.far = this.firstPerson ? 48 : Infinity
     const ray = this.raycaster.ray
-    let best: { id: PickId; d: number } | null = null
+    const terrain = this.raycaster.intersectObject(this.litMesh, false)[0]
+    const tDist = terrain?.distance ?? this.raycaster.far
     const hit = new THREE.Vector3()
-    const pb = new THREE.Box3(this.playerPos.clone().add(new THREE.Vector3(-0.4, 0, -0.4)), this.playerPos.clone().add(new THREE.Vector3(0.4, 1.9, 0.4)))
-    if (ray.intersectBox(pb, hit)) best = { id: 'player', d: hit.distanceTo(ray.origin) - 2 }
+    if (!this.firstPerson) {
+      const pb = new THREE.Box3(this.playerPos.clone().add(new THREE.Vector3(-0.4, 0, -0.4)), this.playerPos.clone().add(new THREE.Vector3(0.4, 1.9, 0.4)))
+      if (ray.intersectBox(pb, hit) && hit.distanceTo(ray.origin) < tDist + 0.5) return 'player'
+    }
+    let best: { id: PickId; vol: number } | null = null
+    const size = new THREE.Vector3()
     for (const [id, box] of this.boxes) {
       if (id === 'spawn') continue
-      if (ray.intersectBox(box, hit)) {
-        const d = hit.distanceTo(ray.origin)
-        if (!best || d < best.d) best = { id, d }
-      }
+      const landsInside = terrain && box.clone().expandByScalar(0.3).containsPoint(terrain.point)
+      const front = ray.intersectBox(box, hit) && hit.distanceTo(ray.origin) < tDist - 0.2
+      if (!landsInside && !front) continue
+      box.getSize(size)
+      const vol = size.x * size.y * size.z
+      if (!best || vol < best.vol) best = { id, vol }
     }
     return best?.id ?? null
   }
 
   private groundClick() {
     this.raycaster.setFromCamera(this.pointer, this.camera)
-    const hits = this.raycaster.intersectObject(this.litMesh, false)
-    if (!hits.length) return
-    const p = hits[0].point
-    const x = Math.floor(p.x); const z = Math.floor(p.z)
-    if (this.world.ground(x, z) < 0) return
-    this.path = [new THREE.Vector3(x + 0.5, 0, z + 0.5)]
-    this.pathTarget = null
-    this.at = null
-    this.emit('depart')
+    this.raycaster.far = Infinity
+    const hit = this.raycaster.intersectObject(this.litMesh, false)[0]
+    if (!hit?.face) return
+    // the block we hit, then the air cell on its clicked face
+    const n = hit.face.normal
+    const b = hit.point.clone().addScaledVector(n, -0.01).floor()
+    const x = b.x + Math.round(n.x); const z = b.z + Math.round(n.z)
+    const y = settle(this.world, x, z, b.y + Math.max(0, Math.round(n.y)), 1)
+    if (y === null) return
+    if (this.walkTo({ x, y, z })) this.emit('event', 'walk')
   }
 
   private unbind: (() => void) | null = null
@@ -397,6 +472,13 @@ export class Engine {
     }
     const down = (e: PointerEvent) => {
       if (this.mode !== 'world') return
+      if (this.view === 'first' && e.pointerType === 'mouse') {
+        // first click captures the mouse; once captured, clicks act on whatever the crosshair is on
+        if (!this.locked) { this.lockPointer(); return }
+        const id = this.pick()
+        if (id && id !== 'player') this.emit('select', id)
+        return
+      }
       c.setPointerCapture(e.pointerId)
       this.pinch.set(e.pointerId, { x: e.clientX, y: e.clientY })
       if (this.pinch.size === 2) { const [a, b] = [...this.pinch.values()]; this.pinchDist = Math.hypot(a.x - b.x, a.y - b.y); this.drag = null; return }
@@ -404,6 +486,12 @@ export class Engine {
       c.style.cursor = 'grabbing'
     }
     const move = (e: PointerEvent) => {
+      if (this.locked) {
+        this.look.yaw -= e.movementX * 0.0024
+        this.look.pitch = THREE.MathUtils.clamp(this.look.pitch - e.movementY * 0.0024, -1.5, 1.5)
+        this.lookGoal = null
+        return
+      }
       toPointer(e)
       if (this.pinch.has(e.pointerId)) this.pinch.set(e.pointerId, { x: e.clientX, y: e.clientY })
       if (this.pinch.size === 2) {
@@ -417,6 +505,13 @@ export class Engine {
         const dx = e.clientX - this.drag.x; const dy = e.clientY - this.drag.y
         this.drag.moved += Math.abs(dx) + Math.abs(dy)
         this.drag.x = e.clientX; this.drag.y = e.clientY
+        if (this.view === 'first') {
+          // touch look: drag the view the way a phone game does
+          this.look.yaw += dx * 0.006
+          this.look.pitch = THREE.MathUtils.clamp(this.look.pitch + dy * 0.005, -1.4, 1.4)
+          this.lookGoal = null
+          return
+        }
         this.goal.yaw -= dx * 0.0065
         this.goal.pitch = THREE.MathUtils.clamp(this.goal.pitch + dy * 0.005, 0.06, 1.35)
         this.flight = null
@@ -431,13 +526,19 @@ export class Engine {
       c.style.cursor = this.hovered ? 'pointer' : 'grab'
       if (d && d.id === e.pointerId && d.moved < 6) {
         toPointer(e)
+        if (this.view === 'first') {
+          // a tap in first person acts on what was tapped, through the camera's own eyes
+          const id = this.pick(this.pointer)
+          if (id && id !== 'player') this.emit('select', id)
+          return
+        }
         const id = this.pick()
         if (id) this.emit('select', id)
         else this.groundClick()
       }
     }
     const wheel = (e: WheelEvent) => {
-      if (this.mode !== 'world') return
+      if (this.mode !== 'world' || this.view === 'first') return
       e.preventDefault()
       this.goal.dist = THREE.MathUtils.clamp(this.goal.dist * Math.pow(1.0015, e.deltaY), 7, 110)
       this.flight = null
@@ -446,13 +547,20 @@ export class Engine {
     const kd = (e: KeyboardEvent) => {
       if (!this.keyboardEnabled || this.mode !== 'world') return
       const k = e.key.toLowerCase()
-      if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'q', 'e'].includes(k)) {
+      if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'shift'].includes(k)) {
         if (k === ' ' || k.startsWith('arrow')) e.preventDefault()
         this.keys.add(k)
       }
     }
     const ku = (e: KeyboardEvent) => this.keys.delete(e.key.toLowerCase())
     const blur = () => this.keys.clear()
+    const lockChange = () => {
+      const was = this.locked
+      this.locked = document.pointerLockElement === c
+      if (was && !this.locked && !this.releasing) { this.keys.clear(); this.emit('unlock') }
+      if (!this.locked) this.releasing = false
+    }
+    document.addEventListener('pointerlockchange', lockChange)
     c.addEventListener('pointerdown', down)
     c.addEventListener('pointermove', move)
     c.addEventListener('pointerup', up)
@@ -466,6 +574,7 @@ export class Engine {
       c.removeEventListener('pointerdown', down); c.removeEventListener('pointermove', move); c.removeEventListener('pointerup', up)
       c.removeEventListener('pointercancel', up); c.removeEventListener('pointerleave', leave); c.removeEventListener('wheel', wheel)
       window.removeEventListener('keydown', kd); window.removeEventListener('keyup', ku); window.removeEventListener('blur', blur)
+      document.removeEventListener('pointerlockchange', lockChange)
     }
   }
 
@@ -475,32 +584,34 @@ export class Engine {
     let moving = false
     let speed = 0
     const p = this.playerPos
-    // keyboard walking, relative to the camera
-    let ix = 0; let iz = 0
+    const fp = this.view === 'first'
+    // keyboard or joystick walking, relative to where the camera looks
+    let ix = this.stick.x; let iz = -this.stick.y
     if (this.keys.has('w') || this.keys.has('arrowup')) iz -= 1
     if (this.keys.has('s') || this.keys.has('arrowdown')) iz += 1
     if (this.keys.has('a') || this.keys.has('arrowleft')) ix -= 1
     if (this.keys.has('d') || this.keys.has('arrowright')) ix += 1
-    if (this.keys.has('q')) this.goal.yaw += dt * 1.8
-    if (this.keys.has('e')) this.goal.yaw -= dt * 1.8
-    if (ix || iz) {
+    const inWater = this.wetAt(p.x, p.y + 0.3, p.z)
+    let blocked = false
+    if (Math.abs(ix) > 0.08 || Math.abs(iz) > 0.08) {
       if (this.path.length) { this.path = []; this.pathTarget = null }
       if (this.at) { this.at = null; this.emit('depart') }
-      const yaw = this.rig.yaw
-      const fx = -Math.sin(yaw); const fz = -Math.cos(yaw)
-      const rx = Math.cos(yaw); const rz = -Math.sin(yaw)
+      // forward is where the camera faces: the look direction in first person, away from the camera in third
+      const yaw = fp ? this.look.yaw : this.rig.yaw + Math.PI
+      const fx = Math.sin(yaw); const fz = Math.cos(yaw)
+      const rx = -Math.cos(yaw); const rz = Math.sin(yaw)
       let mx = fx * -iz + rx * ix; let mz = fz * -iz + rz * ix
-      const len = Math.hypot(mx, mz); mx /= len; mz /= len
-      speed = 5.6
-      this.moveBy(mx * speed * dt, mz * speed * dt)
-      this.playerYaw = lerpAngle(this.playerYaw, Math.atan2(mx, mz), Math.min(1, dt * 12))
+      const amount = Math.min(1, Math.hypot(mx, mz)); const len = Math.hypot(mx, mz); mx /= len; mz /= len
+      speed = (this.keys.has('shift') ? 8.4 : 5.6) * amount * (inWater ? 0.6 : 1)
+      blocked = !this.moveBy(mx * speed * dt, mz * speed * dt)
+      if (!fp) this.playerYaw = lerpAngle(this.playerYaw, Math.atan2(mx, mz), Math.min(1, dt * 12))
       moving = true
     } else if (this.path.length) {
       const next = this.path[0]
       const dx = next.x - p.x; const dz = next.z - p.z
       const d = Math.hypot(dx, dz)
       const remaining = this.path.reduce((acc, w, i) => acc + (i === 0 ? d : w.distanceTo(this.path[i - 1])), 0)
-      speed = Math.max(7, Math.min(18, remaining / 2.6))
+      speed = fp ? Math.min(8, Math.max(5.6, remaining / 3)) : Math.max(7, Math.min(16, remaining / 2.6))
       const step = speed * dt
       if (d <= step) {
         p.x = next.x; p.z = next.z
@@ -509,18 +620,31 @@ export class Engine {
       } else {
         p.x += (dx / d) * step; p.z += (dz / d) * step
         this.playerYaw = lerpAngle(this.playerYaw, Math.atan2(dx, dz), Math.min(1, dt * 10))
+        if (fp) this.lookGoal = { yaw: Math.atan2(dx, dz), pitch: -0.12 }
       }
+      // the planner already proved each cell; climb or drop to the waypoint's height
+      if (d > 0.01 && Math.abs(next.y - p.y) > 0.01) { p.y = THREE.MathUtils.damp(p.y, next.y, 14, dt); this.vy = 0 }
       moving = true
     }
-    // vertical: step up onto the ground, fall with gravity
+    if (fp) this.playerYaw = this.look.yaw
+    // vertical: gravity, jumping, swimming
     const gx = Math.floor(p.x); const gz = Math.floor(p.z)
     let ground = -1
     for (let y = Math.floor(p.y + 1.1); y >= 0; y--) if (SOLID[this.world.get(gx, y, gz)]) { ground = y + 1; break }
-    if (this.keys.has(' ') && Math.abs(p.y - ground) < 0.05 && ground >= 0) { this.vy = 8.2; this.emit('event', 'jump') }
-    if (this.path.length && ground >= 0 && ground > p.y) { p.y = THREE.MathUtils.damp(p.y, ground, 18, dt) }
-    this.vy -= 26 * dt
-    p.y += this.vy * dt
-    if (ground >= 0 && p.y <= ground) { p.y = ground; this.vy = 0 }
+    const onGround = ground >= 0 && Math.abs(p.y - ground) < 0.05
+    if (this.keys.has(' ') && onGround && !inWater) { this.vy = 8.2; this.emit('event', 'jump') }
+    if (inWater) {
+      // water slows the fall, and swimming into a bank climbs you out of it
+      this.vy = Math.max(this.vy - 9 * dt, -2.2)
+      if (this.keys.has(' ') || blocked) this.vy = 4.2
+    } else if (!this.path.length) this.vy -= 26 * dt
+    if (this.vy > 0 && this.solidAt(p.x, p.y + 1.85 + this.vy * dt, p.z)) this.vy = 0
+    if (!this.path.length) p.y += this.vy * dt
+    if (ground >= 0 && p.y <= ground) { p.y = ground; if (this.vy < 0) this.vy = 0 }
+    // never stay wedged inside a block: rise to the nearest place that fits
+    if (this.solidAt(p.x, p.y + 0.2, p.z)) {
+      for (let y = Math.floor(p.y) + 1; y <= Math.floor(p.y) + 4; y++) if (standable(this.world, gx, y, gz)) { p.y = y; this.vy = 0; break }
+    }
     if (p.y < Y0 - 60) {
       this.emit('event', 'void')
       this.teleport('spawn')
@@ -557,11 +681,17 @@ export class Engine {
       }
       return true
     }
+    let moved = true
     if (tryAxis(p.x + dx, p.z)) p.x += dx
     else if (this.solidAt(p.x + dx, p.y + 0.01, p.z) && !this.solidAt(p.x + dx, p.y + 1.01, p.z) && !this.solidAt(p.x + dx, p.y + 2, p.z)) { p.y = Math.floor(p.y + 1); p.x += dx }
+    else if (Math.abs(dx) > 1e-4) moved = false
     if (tryAxis(p.x, p.z + dz)) p.z += dz
     else if (this.solidAt(p.x, p.y + 0.01, p.z + dz) && !this.solidAt(p.x, p.y + 1.01, p.z + dz) && !this.solidAt(p.x, p.y + 2, p.z + dz)) { p.y = Math.floor(p.y + 1); p.z += dz }
+    else if (Math.abs(dz) > 1e-4) moved = false
+    return moved
   }
+
+  private wetAt(x: number, y: number, z: number) { return !!BLOCKS[this.world.get(Math.floor(x), Math.floor(y), Math.floor(z))].water }
 
   private applySky() {
     const t = this.dayTime
@@ -635,13 +765,42 @@ export class Engine {
       this.rig.pitch += (this.goal.pitch - this.rig.pitch) * s
       this.rig.dist += (this.goal.dist - this.rig.dist) * s
     }
-    const { target, yaw, pitch, dist } = this.rig
-    this.camera.position.set(target.x + Math.sin(yaw) * Math.cos(pitch) * dist, target.y + Math.sin(pitch) * dist, target.z + Math.cos(yaw) * Math.cos(pitch) * dist)
+    const fp = this.firstPerson
+    this.player.root.visible = !fp
+    if (fp) {
+      if (this.lookGoal) {
+        const s = 1 - Math.exp(-dt * 5)
+        this.look.yaw = lerpAngle(this.look.yaw, this.lookGoal.yaw, s)
+        this.look.pitch += (this.lookGoal.pitch - this.look.pitch) * s
+      }
+      const walking = this.path.length > 0 || this.keys.size > 0 || Math.hypot(this.stick.x, this.stick.y) > 0.1
+      this.bob = this.reduced || !walking ? THREE.MathUtils.damp(this.bob, 0, 10, dt) : Math.abs(Math.sin(this.walkPhase)) * 0.06
+      const eye = this.eye()
+      this.camera.position.copy(eye)
+      this.camera.lookAt(eye.add(this.forward()))
+    } else {
+      const { target, yaw, pitch } = this.rig
+      let dist = this.rig.dist
+      // keep the camera out of walls and hills: march from the player toward it and stop short of the first block
+      if (this.mode === 'world' && !this.flight) {
+        const dir = new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch))
+        let free = dist
+        for (let s = 0.6; s < dist; s += 0.25) {
+          const q = target.clone().addScaledVector(dir, s)
+          if (this.solidAt(q.x, q.y, q.z)) { free = Math.max(1.4, s - 0.45); break }
+        }
+        this.camClip = free < this.camClip ? free : THREE.MathUtils.damp(this.camClip, free, 3, dt)
+        dist = Math.min(dist, this.camClip)
+      } else this.camClip = dist
+      this.camera.position.set(target.x + Math.sin(yaw) * Math.cos(pitch) * dist, target.y + Math.sin(pitch) * dist, target.z + Math.cos(yaw) * Math.cos(pitch) * dist)
+      this.camera.lookAt(target)
+    }
     if (this.shake > 0) {
       this.shake = Math.max(0, this.shake - dt)
       this.camera.position.add(new THREE.Vector3((Math.random() - 0.5) * this.shake * 2, (Math.random() - 0.5) * this.shake * 2, 0))
     }
-    this.camera.lookAt(target)
+    const fov = fp ? 72 : this.canvas.clientWidth < 640 ? 68 : 55
+    if (this.camera.fov !== fov) { this.camera.fov = fov; this.camera.updateProjectionMatrix() }
 
     // sky follows camera
     this.sky.sky.position.copy(this.camera.position)
@@ -665,7 +824,7 @@ export class Engine {
     if (this.creeper) this.stepCreeper(dt)
 
     // hover
-    if (this.mode === 'world' && !this.drag && this.pointer.x > -2) this.setHover(this.pick())
+    if (this.mode === 'world' && !this.drag && (this.firstPerson || this.pointer.x > -2)) this.setHover(this.pick())
 
     this.renderer.render(this.scene, this.camera)
     for (const l of this.listeners) (l as Listener & { frame?: () => void }).frame?.()

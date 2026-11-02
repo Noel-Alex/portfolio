@@ -1,0 +1,75 @@
+/* Kargo: a stand-in until the project gets its own UI. A copper-and-brass factory line in the spirit of the Create mod. */
+:root:has(.kg) { background: #1c1714; color-scheme: dark; }
+.kg {
+  --iron: #1c1714; --iron-2: #262019; --iron-3: #332a21; --copper: #d27a44; --copper-2: #f0a26d; --brass: #e3b54a; --verdigris: #5fb39a; --steam: #efe4d4; --dim: #a8988a; --rule: #efe4d41f;
+  --plate: 'Chakra Petch', var(--cond);
+  background: var(--iron); color: var(--steam); min-height: 100vh;
+  background-image: radial-gradient(#ffffff08 1.5px, transparent 1.6px); background-size: 22px 22px;
+}
+.kg ::selection { background: var(--brass); color: var(--iron); }
+.kg .sitebar { background: var(--iron-2); border-bottom: 2px solid var(--copper); font: 600 13px/1 var(--plate); letter-spacing: 0.08em; text-transform: uppercase; }
+.kg main { max-width: 1240px; margin: 0 auto; padding: 0 var(--gutter); }
+
+.kg-hero { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr); gap: clamp(20px, 4vw, 56px); align-items: center; padding: clamp(40px, 6vw, 88px) 0 clamp(24px, 4vw, 48px); }
+.kg-plate { display: inline-block; padding: 6px 12px; background: linear-gradient(#e3b54a, #b88a2b); color: var(--iron); font: 700 12px/1 var(--plate); letter-spacing: 0.12em; text-transform: uppercase; box-shadow: inset 0 -2px 0 #0004; }
+.kg-hero h1 { margin-top: 16px; font: 700 clamp(72px, 13vw, 180px)/0.86 var(--plate); text-transform: uppercase; letter-spacing: 0.01em;
+  color: var(--copper); text-shadow: 0 2px 0 #9c5228, 0 4px 0 #5a2f16, 0 10px 24px #0008; }
+.kg-sum { margin-top: 16px; font: 600 clamp(20px, 2.4vw, 30px)/1.2 var(--plate); text-transform: uppercase; }
+.kg-lede { margin-top: 14px; max-width: 56ch; font: 400 17px/1.7 var(--sans); color: #d8ccbd; }
+.kg-art { filter: drop-shadow(0 20px 24px #000a); }
+
+.kg-sec { padding: clamp(40px, 6vw, 80px) 0; border-top: 2px dashed var(--rule); }
+.kg-sec h2 { font: 700 clamp(28px, 3.6vw, 44px)/1 var(--plate); text-transform: uppercase; color: var(--brass); }
+.kg-p { margin-top: 14px; max-width: 58ch; font: 400 17px/1.7 var(--sans); color: #d8ccbd; }
+.kg-sec--two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(24px, 5vw, 64px); align-items: center; }
+
+/* the line */
+.kg-line { margin-top: 32px; }
+.kg-machines { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.kg-machine {
+  position: relative; display: grid; gap: 8px; align-content: start; min-height: 190px; padding: 18px 16px 20px;
+  background: linear-gradient(var(--iron-3), var(--iron-2)); border: 2px solid #4a3c2e; box-shadow: inset 0 2px 0 #ffffff10, 0 6px 0 #0006;
+}
+.kg-machine.is-mine { border-color: var(--copper); }
+.kg-machine h3 { font: 700 24px/1 var(--plate); text-transform: uppercase; }
+.kg-machine p { font: 400 13px/1.5 var(--mono); color: var(--dim); }
+.kg-mine { position: absolute; top: -12px; right: 12px; padding: 4px 8px; background: var(--copper); color: var(--iron); font: 700 11px/1 var(--plate); letter-spacing: 0.1em; text-transform: uppercase; }
+.kg-cog {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: radial-gradient(circle, var(--iron-2) 30%, transparent 32%), conic-gradient(from 0deg, var(--brass) 0 10%, transparent 0 15%, var(--brass) 0 35%, transparent 0 40%, var(--brass) 0 60%, transparent 0 65%, var(--brass) 0 85%, transparent 0 90%, var(--brass) 0);
+  -webkit-mask: radial-gradient(circle, #000 66%, transparent 68%); mask: radial-gradient(circle, #000 66%, transparent 68%);
+}
+.kg-line.is-on .kg-cog { animation: kg-spin 4s linear infinite; }
+.kg-line.is-on .kg-machine { animation: kg-lit 8s calc(var(--i) * 2s + 0.9s) infinite; }
+@keyframes kg-spin { to { rotate: 1turn } }
+@keyframes kg-lit { 0%, 18% { box-shadow: inset 0 2px 0 #ffffff10, 0 6px 0 #0006, 0 0 0 0 #d27a4400; } 6% { box-shadow: inset 0 2px 0 #ffffff10, 0 6px 0 #0006, 0 0 28px 2px #d27a4488; background: linear-gradient(#4a382a, var(--iron-2)); } }
+
+.kg-belt { position: relative; height: 34px; margin-top: 14px; background: repeating-linear-gradient(90deg, #3a3027 0 18px, #2b231c 18px 36px); border-block: 3px solid #4a3c2e; }
+.kg-line.is-on .kg-belt { animation: kg-belt 1s linear infinite; }
+@keyframes kg-belt { to { background-position: 36px 0 } }
+.kg-crate {
+  position: absolute; top: -18px; left: 0; width: 64px; height: 44px; display: grid; place-items: center;
+  background: linear-gradient(#b98a52, #8e6436); border: 2px solid #5a3e22; color: #fff3e2; font: 700 13px/1 var(--plate); text-transform: uppercase;
+  box-shadow: inset 0 0 0 4px #00000022;
+}
+.kg-line.is-on .kg-crate { animation: kg-ride 8s linear infinite; }
+@keyframes kg-ride { from { left: -2% } to { left: 100% } }
+
+.kg-out { margin: 0; border: 2px solid #4a3c2e; background: #120e0b; }
+.kg-out figcaption { display: flex; justify-content: space-between; padding: 10px 14px; border-bottom: 2px solid #4a3c2e; font: 700 14px/1 var(--plate); text-transform: uppercase; }
+.kg-out figcaption span { color: var(--dim); font-weight: 500; }
+.kg-out pre { margin: 0; padding: 16px; font: 400 14px/1.7 var(--mono); overflow-x: auto; }
+.kg-out mark { background: #d27a4433; color: var(--copper-2); }
+
+.kg .pend-limits h2 { font: 700 13px/1 var(--plate); color: var(--brass); }
+.kg .pend-world, .kg .pend-link { border: 2px solid var(--copper); font: 700 15px/1 var(--plate); text-transform: uppercase; letter-spacing: 0.06em; }
+.kg .pend-link:first-child { background: var(--copper); color: var(--iron); }
+.kg .pend-world:hover, .kg .pend-link:hover { background: var(--brass); border-color: var(--brass); color: var(--iron); }
+.kg .pend-next { border-top: 2px dashed var(--rule); }
+
+@media (max-width: 900px) {
+  .kg-hero, .kg-sec--two { grid-template-columns: 1fr; }
+  .kg-art { width: min(60%, 300px); }
+  .kg-machines { grid-template-columns: 1fr 1fr; }
+  .kg-belt { display: none; }
+}

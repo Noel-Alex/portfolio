@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { links, servers } from '../content'
 import { BlockIcon, McButton, PixelIcon, Screen } from './gui'
-import { navigate } from './router'
+import { goBack, navigate, type Route } from './router'
+import { track } from '../analytics'
 import { sfx } from './sound'
 import { store, useStore, type Settings } from './store'
 
@@ -15,16 +16,20 @@ function Ping({ bars }: { bars: number }) {
   )
 }
 
-export function ServersScreen({ server, back }: { server?: string; back: () => void }) {
+export function ServersScreen({ server, back, inWorld = false }: { server?: string; back: () => void; inWorld?: boolean }) {
+  const list: Route = inWorld ? { screen: 'world', overlay: 'servers' } : { screen: 'multiplayer' }
+  const at = (id: string): Route => (inWorld ? { screen: 'world', overlay: 'servers', server: id } : { screen: 'multiplayer', server: id })
+  // leaving a server goes back to wherever the visitor came from (the list, or the village in the world)
+  const disconnect = () => goBack(list)
   const [selected, setSelected] = useState(server ?? servers[0].id)
   const current = servers.find(s => s.id === (server ?? selected)) ?? servers[0]
   const joined = !!server
-  useEffect(() => { if (joined) store.earn('multiplayer') }, [joined])
+  useEffect(() => { if (joined) { store.earn('multiplayer'); track('server_join', { server: current.id }) } }, [joined, current.id])
 
   if (joined) {
     return (
-      <Screen title={current.name} className="server-screen" onClose={() => navigate({ screen: 'multiplayer' })}
-        footer={<McButton onClick={() => navigate({ screen: 'multiplayer' })}>Disconnect</McButton>}>
+      <Screen title={current.name} className="server-screen" onClose={disconnect}
+        footer={<McButton onClick={disconnect}>Disconnect</McButton>}>
         <article className="server-join">
           {current.photo && <img className="server-photo" src={asset(current.photo.src)} alt={current.photo.alt} />}
           <div className="server-text">
@@ -37,13 +42,13 @@ export function ServersScreen({ server, back }: { server?: string; back: () => v
     )
   }
 
-  const join = (id: string) => { sfx.click(); navigate({ screen: 'multiplayer', server: id }) }
+  const join = (id: string) => { sfx.click(); navigate(at(id)) }
   return (
     <Screen title="Play Multiplayer" className="servers-screen" onClose={back}
       footer={
         <div className="servers-actions">
           <McButton size="half" onClick={() => join(current.id)}>Join Server</McButton>
-          <McButton size="half" onClick={() => navigate({ screen: 'work' })}>Add Server</McButton>
+          <McButton size="half" onClick={() => navigate(inWorld ? { screen: 'world', overlay: 'work' } : { screen: 'work' }, true)}>Add Server</McButton>
           <McButton size="half" onClick={back}>Cancel</McButton>
         </div>
       }>
@@ -76,7 +81,7 @@ export function WorkScreen({ back }: { back: () => void }) {
   const [place, setPlace] = useState(0)
   const [copied, setCopied] = useState(false)
   const copy = async () => {
-    try { await navigator.clipboard.writeText(links.emailText); setCopied(true); sfx.pop(); store.earn('diamonds') } catch { /* clipboard blocked */ }
+    try { await navigator.clipboard.writeText(links.emailText); setCopied(true); sfx.pop(); store.earn('diamonds'); track('email_copy', { from: 'game' }) } catch { /* clipboard blocked */ }
   }
   useEffect(() => { if (!copied) return; const t = window.setTimeout(() => setCopied(false), 1800); return () => window.clearTimeout(t) }, [copied])
   return (
@@ -89,13 +94,13 @@ export function WorkScreen({ back }: { back: () => void }) {
         </div>
         <p className="work-status">Accepting messages about {FIELDS[field]} roles in {PLACES[place] === 'Remote' ? 'remote teams' : PLACES[place]}.</p>
         <div className="work-email">
-          <a href={links.email} onClick={() => { sfx.click(); store.earn('diamonds') }}><PixelIcon name="mail" size={16} /> {links.emailText}</a>
+          <a href={links.email} onClick={() => { sfx.click(); store.earn('diamonds'); track('email_click', { from: 'game' }) }}><PixelIcon name="mail" size={16} /> {links.emailText}</a>
           <McButton size="auto" onClick={copy}>{copied ? 'Copied' : 'Copy'}</McButton>
         </div>
         <div className="work-row">
           <McButton size="auto" href={links.linkedin} external>LinkedIn <PixelIcon name="link" size={12} /></McButton>
           <McButton size="auto" href={links.github} external>GitHub <PixelIcon name="link" size={12} /></McButton>
-          <McButton size="auto" href={links.resume} external>Resume (PDF) <PixelIcon name="link" size={12} /></McButton>
+          <McButton size="auto" href={links.resume} external onClick={() => track('resume_download', { from: 'game' })}>Resume (PDF) <PixelIcon name="link" size={12} /></McButton>
         </div>
       </div>
     </Screen>

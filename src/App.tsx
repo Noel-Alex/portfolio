@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Engine, PickId } from './engine/Engine'
+import type { Engine, PickId, View } from './engine/Engine'
+import { track } from './analytics'
 import type { LandmarkId } from './engine/world'
 import { hotbar, landmarkBook, landmarkName, projectById } from './content'
 import { tileCanvas } from './engine/textures'
 import { Advancements } from './ui/Advancements'
 import { Book } from './ui/Book'
 import { Toasts } from './ui/gui'
-import { ChatInput, ChatLog, DebugOverlay, Hotbar, MobileControls, PauseMenu, Status, Tutorial, WorldLabels, type ChatApi } from './ui/Hud'
+import { ChatInput, ChatLog, Crosshair, DebugOverlay, Hotbar, MobileControls, PauseMenu, Status, Tutorial, WorldLabels, type ChatApi } from './ui/Hud'
 import { useChatLog } from './ui/chatLog'
 import { Inventory } from './ui/Inventory'
 import { ModsScreen } from './ui/ModsScreen'
@@ -19,7 +20,7 @@ import { TitleScreen } from './ui/TitleScreen'
 type Panel = null | 'pause' | 'inventory' | 'advancements' | 'options' | 'chat'
 type Status = 'loading' | 'ready' | 'failed'
 
-const PLACES: LandmarkId[] = ['stretchy', 'arachne', 'helix', 'sivana', 'polysafe', 'aster', 'petra', 'kargo', 'ultrachat', 'gdg', 'portal']
+const PLACES: LandmarkId[] = ['stretchy', 'arachne', 'phishgcn', 'helix', 'sivana', 'polysafe', 'aster', 'petra', 'kargo', 'ultrachat', 'gdg', 'portal']
 const asset = (name: string) => `${import.meta.env.BASE_URL}assets/${name}`
 
 function useReducedMotion() {
@@ -57,6 +58,8 @@ export default function App() {
   const openOnArrive = useRef(false)
   const inWorld = route.screen === 'world'
   const book = route.screen === 'world' || route.screen === 'mods' ? route.book : undefined
+  const overlay = route.screen === 'world' ? route.overlay : undefined
+  const [view, setView] = useState<View>('third')
 
   // ------------------------------------------------------------ engine boot
   useEffect(() => {
@@ -99,13 +102,23 @@ export default function App() {
     joined.current = true
   }, [inWorld, say])
 
-  useEffect(() => { if (engine) engine.keyboardEnabled = inWorld && !book && !panel }, [engine, inWorld, book, panel])
+  useEffect(() => {
+    if (!engine) return
+    engine.keyboardEnabled = inWorld && !book && !panel && !overlay
+    if (book || panel || overlay) engine.releasePointer()
+  }, [engine, inWorld, book, panel, overlay])
+  useEffect(() => { engine?.setView(view) }, [engine, view])
+  // an in-world screen replaces the pause menu that opened it
+  useEffect(() => { if (overlay) setPanel(null) }, [overlay])
+  useEffect(() => { if (inWorld) track('world_enter') }, [inWorld])
+  useEffect(() => { if (book) track('book_open', { book }) }, [book])
 
   const travel = useCallback((id: LandmarkId) => {
     if (!engine) return
     openOnArrive.current = true
     setMoved(true)
     engine.travelTo(id)
+    track('travel', { to: id })
   }, [engine])
 
   // ------------------------------------------------------------ engine events
@@ -119,10 +132,11 @@ export default function App() {
         else travel(id)
       },
       depart: () => setAt(null),
+      unlock: () => setPanel(p => p ?? 'pause'),
       arrive: id => {
         setAt(id)
         setAnnounce(`Arrived at ${landmarkName[id]}`)
-        if (id === 'arachne') store.earn('maze')
+        if (id === 'phishgcn') store.earn('maze')
         if (id === 'sivana') store.earn('music')
         if (PLACES.includes(id)) {
           store.visit(id)
@@ -130,8 +144,8 @@ export default function App() {
         }
         if (!openOnArrive.current || engine.mode !== 'world') return
         openOnArrive.current = false
-        if (id === 'gdg') navigate({ screen: 'multiplayer', server: 'gdg' })
-        else if (id === 'portal') navigate({ screen: 'work' })
+        if (id === 'gdg') navigate({ screen: 'world', overlay: 'servers', server: 'gdg' })
+        else if (id === 'portal') navigate({ screen: 'world', overlay: 'work' })
         else { const b = landmarkBook[id]; if (b) navigate({ screen: 'world', book: b }) }
       },
       event: name => {
@@ -159,10 +173,11 @@ export default function App() {
 
   // ------------------------------------------------------------ keyboard
   useEffect(() => {
-    if (!inWorld || book) return
+    if (!inWorld || book || overlay) return
     const key = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.closest('input, textarea, select')) return
       if (e.key === 'F3') { e.preventDefault(); setDebug(d => !d); return }
+      if (e.key === 'F5' || (!panel && e.key.toLowerCase() === 'v')) { e.preventDefault(); setView(v => (v === 'first' ? 'third' : 'first')); return }
       if (panel === 'chat') return
       if (e.key === 'Escape') { e.preventDefault(); setPanel(p => (p === 'options' ? 'pause' : p ? null : 'pause')); return }
       if (panel) return
@@ -174,7 +189,7 @@ export default function App() {
     }
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
-  }, [inWorld, book, panel, travel])
+  }, [inWorld, book, overlay, panel, travel])
 
   // ------------------------------------------------------------ music
   const music = useRef<HTMLAudioElement>(null)
@@ -211,20 +226,25 @@ export default function App() {
         <main id="main-content" className="hud" aria-label="World">
           <h1 className="sr-only">Noel Alex’s world</h1>
           <p className="sr-only" aria-live="polite">{announce}</p>
-          {engine && <WorldLabels engine={engine} hovered={hovered} />}
+          {engine && <WorldLabels engine={engine} hovered={hovered} firstPerson={view === 'first'} />}
           {engine && debug && <DebugOverlay engine={engine} />}
-          {!panel && !book && <Tutorial done={moved} />}
+          {!panel && !book && !overlay && <Tutorial done={moved} view={view} />}
+          {view === 'first' && !panel && !book && !overlay && <Crosshair />}
           <ChatLog lines={lines} open={panel === 'chat'} />
           {panel === 'chat' && api && <ChatInput initial={chatSeed} api={api} say={say} onClose={() => setPanel(null)} />}
-          {!panel && <MobileControls onPause={() => setPanel('pause')} onChat={() => { setChatSeed(''); setPanel('chat') }} />}
-          <div className="hud-bottom">
-            <Status hearts={hearts} />
-            <Hotbar at={at} onPick={travel} />
-          </div>
-          {panel === 'pause' && <PauseMenu onResume={() => setPanel(null)} onPanel={setPanel} />}
+          {!panel && !overlay && engine && <MobileControls engine={engine} view={view} onView={() => setView(v => (v === 'first' ? 'third' : 'first'))} onPause={() => setPanel('pause')} onChat={() => { setChatSeed(''); setPanel('chat') }} />}
+          {!overlay && (
+            <div className="hud-bottom">
+              <Status hearts={hearts} />
+              <Hotbar at={at} onPick={travel} />
+            </div>
+          )}
+          {panel === 'pause' && <PauseMenu onResume={() => { setPanel(null); engine?.lockPointer() }} onPanel={setPanel} view={view} onView={() => setView(v => (v === 'first' ? 'third' : 'first'))} />}
           {panel === 'inventory' && <Inventory onClose={() => setPanel(null)} openBook={openBook} reduced={reduced} />}
           {panel === 'advancements' && <Advancements onClose={() => setPanel(null)} openBook={openBook} />}
           {panel === 'options' && <OptionsScreen back={() => setPanel('pause')} time={engine?.getTime() ?? 0} setTime={t => engine?.setTime(t)} />}
+          {overlay === 'servers' && <ServersScreen server={route.screen === 'world' ? route.server : undefined} inWorld back={() => goBack({ screen: 'world' })} />}
+          {overlay === 'work' && <WorkScreen back={() => goBack({ screen: 'world' })} />}
         </main>
       )}
 

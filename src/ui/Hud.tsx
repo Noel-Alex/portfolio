@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type WheelEvent } from 'react'
-import type { Engine, PickId } from '../engine/Engine'
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import type { Engine, PickId, View } from '../engine/Engine'
+import { track } from '../analytics'
 import type { LandmarkId } from '../engine/world'
 import { hotbar, landmarkName, links, projectById, landmarkBook } from '../content'
 import { BlockIcon, McButton, PixelIcon } from './gui'
@@ -18,14 +19,10 @@ export function Hotbar({ at, onPick }: { at: LandmarkId | null; onPick: (id: Lan
     const t = window.setTimeout(() => setShown(null), 2400)
     return () => window.clearTimeout(t)
   }, [selected])
-  const wheel = (e: WheelEvent) => {
-    const from = selected < 0 ? 0 : selected
-    onPick(hotbar[(from + (e.deltaY > 0 ? 1 : -1) + 9) % 9].landmark)
-  }
   return (
     <div className="hotbar-wrap">
       <p className={`held-name ${shown ? 'is-on' : ''}`} aria-hidden="true">{shown}</p>
-      <ol className="hotbar" aria-label="Builds" onWheel={wheel}>
+      <ol className="hotbar" aria-label="Builds">
         {hotbar.map((h, i) => (
           <li key={h.landmark}>
             <button type="button" className={`slot ${i === selected ? 'is-selected' : ''}`} onClick={() => onPick(h.landmark)} aria-label={`${i + 1}: ${h.label}`} aria-current={i === selected}>
@@ -55,7 +52,7 @@ export function Status({ hearts }: { hearts: number }) {
 }
 
 // ------------------------------------------------------- world-attached labels
-export function WorldLabels({ engine, hovered }: { engine: Engine; hovered: PickId | null }) {
+export function WorldLabels({ engine, hovered, firstPerson }: { engine: Engine; hovered: PickId | null; firstPerson: boolean }) {
   const tag = useRef<HTMLDivElement>(null)
   const tip = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -65,14 +62,15 @@ export function WorldLabels({ engine, hovered }: { engine: Engine; hovered: Pick
       if (!el) return
       engine.screenPos('player', out)
       el.style.transform = `translate(${out.x}px, ${out.y}px) translate(-50%, -100%)`
-      el.style.opacity = out.visible ? '1' : '0'
+      el.style.opacity = out.visible && engine.view !== 'first' ? '1' : '0'
     })
   }, [engine])
   useEffect(() => {
-    const move = (e: PointerEvent) => { if (tip.current) tip.current.style.transform = `translate(${e.clientX + 14}px, ${e.clientY - 28}px)` }
+    const move = (e: PointerEvent) => { if (tip.current && !firstPerson) tip.current.style.transform = `translate(${e.clientX + 14}px, ${e.clientY - 28}px)` }
+    if (firstPerson && tip.current) tip.current.style.transform = `translate(calc(50vw + 18px), calc(50vh - 10px))`
     window.addEventListener('pointermove', move)
     return () => window.removeEventListener('pointermove', move)
-  }, [])
+  }, [firstPerson])
   const book = hovered && hovered !== 'player' ? landmarkBook[hovered] : undefined
   const project = book ? projectById(book) : undefined
   return (
@@ -80,7 +78,7 @@ export function WorldLabels({ engine, hovered }: { engine: Engine; hovered: Pick
       <div ref={tag} className="nametag" aria-hidden="true">Noel Alex</div>
       <div ref={tip} className={`world-tip tip ${hovered ? 'is-on' : ''}`} aria-hidden="true">
         {hovered === 'player' ? <><strong>Noel Alex</strong><span>Click to open my player book</span></>
-          : hovered ? <><strong>{landmarkName[hovered]}</strong>{project && <span>{project.summary}</span>}</> : null}
+          : hovered ? <><strong>{landmarkName[hovered]}</strong>{project && <span>{project.summary}</span>}{firstPerson && <span className="tip-key">Click to open</span>}</> : null}
       </div>
     </>
   )
@@ -121,6 +119,7 @@ function runCommand(raw: string, api: ChatApi, say: (n: ReactNode) => void) {
   const [cmd, ...args] = raw.trim().slice(1).split(/\s+/)
   const err = (m: string) => say(<span className="chat-err">{m}</span>)
   store.earn('command')
+  track('command', { cmd: (cmd ?? '').toLowerCase() })
   switch (cmd?.toLowerCase()) {
     case 'help':
     case '?':
@@ -243,7 +242,7 @@ export function ChatLog({ lines, open }: { lines: Line[]; open: boolean }) {
 }
 
 // ------------------------------------------------------------------- pause
-export function PauseMenu({ onResume, onPanel }: { onResume: () => void; onPanel: (p: 'inventory' | 'advancements' | 'options') => void }) {
+export function PauseMenu({ onResume, onPanel, view, onView }: { onResume: () => void; onPanel: (p: 'inventory' | 'advancements' | 'options') => void; view: View; onView: () => void }) {
   return (
     <div className="pause" role="dialog" aria-modal="true" aria-labelledby="pause-title">
       <h2 id="pause-title" className="screen-title">Game Menu</h2>
@@ -251,34 +250,72 @@ export function PauseMenu({ onResume, onPanel }: { onResume: () => void; onPanel
         <McButton size="full" onClick={onResume} autoFocus>Back to Game</McButton>
         <McButton size="half" onClick={() => onPanel('advancements')}>Advancements</McButton>
         <McButton size="half" onClick={() => onPanel('inventory')}>Inventory</McButton>
-        <McButton size="half" onClick={() => navigate({ screen: 'multiplayer' })}>Multiplayer</McButton>
-        <McButton size="half" onClick={() => navigate({ screen: 'work' })}>Open to Work</McButton>
-        <McButton size="half" onClick={() => navigate({ screen: 'world', book: 'noel' })}>Player Book</McButton>
+        <McButton size="half" onClick={() => navigate({ screen: 'world', overlay: 'servers' })}>Multiplayer</McButton>
+        <McButton size="half" onClick={() => navigate({ screen: 'world', overlay: 'work' })}>Open to Work</McButton>
+        <McButton size="half" onClick={onView}>View: {view === 'first' ? 'First person' : 'Third person'}</McButton>
         <McButton size="half" onClick={() => onPanel('options')}>Options…</McButton>
-        <McButton size="full" onClick={() => navigate({ screen: 'title' })}>Save and Quit to Title</McButton>
+        <McButton size="half" onClick={() => navigate({ screen: 'home' })}>Read the portfolio</McButton>
+        <McButton size="half" onClick={() => navigate({ screen: 'title' })}>Quit to Title</McButton>
       </div>
     </div>
   )
 }
 
-export function Tutorial({ done }: { done: boolean }) {
+export function Tutorial({ done, view }: { done: boolean; view: View }) {
   const [gone, setGone] = useState(false)
   useEffect(() => { if (done) { const t = window.setTimeout(() => setGone(true), 400); return () => window.clearTimeout(t) } }, [done])
   const touch = matchMedia('(pointer: coarse)').matches
   if (gone) return null
+  const how = touch ? (view === 'first' ? 'Drag to look, stick to walk' : 'Tap a build to walk there')
+    : view === 'first' ? 'Click to look around, Esc to let go' : 'Click a build to walk there · V for first person'
   return (
     <div className={`tutorial ${done ? 'is-done' : ''}`} role="status">
       {!touch && <span className="keys" aria-hidden="true"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span>}
-      <span><strong>Explore the island</strong><span>{touch ? 'Tap a build to walk there' : 'Click a build to walk there'}</span></span>
+      <span><strong>Explore the island</strong><span>{how}</span></span>
     </div>
   )
 }
 
-export function MobileControls({ onPause, onChat }: { onPause: () => void; onChat: () => void }) {
+export function Crosshair() {
+  return <div className="crosshair" aria-hidden="true" />
+}
+
+/** A thumb stick for walking on touch screens: drag from its centre, release to stop. */
+function Stick({ engine }: { engine: Engine }) {
+  const knob = useRef<HTMLSpanElement>(null)
+  const origin = useRef<{ x: number; y: number; id: number } | null>(null)
+  const R = 44
+  const set = (dx: number, dy: number) => {
+    const d = Math.hypot(dx, dy); const k = d > R ? R / d : 1
+    const x = dx * k; const y = dy * k
+    if (knob.current) knob.current.style.transform = `translate(${x}px, ${y}px)`
+    engine.setStick(x / R, -y / R)
+  }
+  const down = (e: ReactPointerEvent) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    origin.current = { x: r.left + r.width / 2, y: r.top + r.height / 2, id: e.pointerId }
+    e.currentTarget.setPointerCapture(e.pointerId)
+    set(e.clientX - origin.current.x, e.clientY - origin.current.y)
+  }
+  const move = (e: ReactPointerEvent) => { const o = origin.current; if (o && o.id === e.pointerId) set(e.clientX - o.x, e.clientY - o.y) }
+  const up = () => { origin.current = null; set(0, 0) }
+  useEffect(() => () => engine.setStick(0, 0), [engine])
   return (
-    <div className="mobile-controls">
-      <button type="button" className="mc-btn mc-btn--icon" onClick={() => { sfx.click(); onChat() }} aria-label="Open chat"><PixelIcon name="chat" size={18} /></button>
-      <button type="button" className="mc-btn mc-btn--icon" onClick={() => { sfx.click(); onPause() }} aria-label="Pause menu"><PixelIcon name="pause" size={18} /></button>
+    <div className="stick" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} role="presentation">
+      <span ref={knob} className="stick-knob" />
     </div>
+  )
+}
+
+export function MobileControls({ engine, view, onView, onPause, onChat }: { engine: Engine; view: View; onView: () => void; onPause: () => void; onChat: () => void }) {
+  return (
+    <>
+      <Stick engine={engine} />
+      <div className="mobile-controls">
+        <button type="button" className="mc-btn mc-btn--icon" onClick={() => { sfx.click(); onView() }} aria-label={view === 'first' ? 'Third-person view' : 'First-person view'} aria-pressed={view === 'first'}><PixelIcon name="eye" size={18} /></button>
+        <button type="button" className="mc-btn mc-btn--icon" onClick={() => { sfx.click(); onChat() }} aria-label="Open chat"><PixelIcon name="chat" size={18} /></button>
+        <button type="button" className="mc-btn mc-btn--icon" onClick={() => { sfx.click(); onPause() }} aria-label="Pause menu"><PixelIcon name="pause" size={18} /></button>
+      </div>
+    </>
   )
 }

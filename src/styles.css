@@ -195,6 +195,8 @@ kbd { font: inherit; }
 .title-menu > .mc-btn { width: 100%; }
 .title-row { display: grid; grid-template-columns: 40px 1fr 1fr 40px; gap: 8px; width: calc(100% + 96px); margin: 16px -48px 0; }
 .title-row .mc-btn--half { width: 100%; }
+.title-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+.title-pair .mc-btn--half { width: 100%; }
 .title-footer {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 2;
   display: flex; justify-content: space-between; gap: 16px; padding: 8px 10px;
@@ -381,6 +383,19 @@ kbd { font: inherit; }
 @keyframes slide-in { from { opacity: 0; transform: translateY(-120%); } }
 
 .mobile-controls { position: absolute; right: 12px; top: 84px; display: grid; gap: 8px; }
+
+/* first person: the vanilla crosshair, drawn as two inverted bars */
+.crosshair { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; translate: -50% -50%; pointer-events: none; mix-blend-mode: difference; }
+.crosshair::before, .crosshair::after { content: ''; position: absolute; background: #ffffff; }
+.crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
+.crosshair::after { left: 0; top: 8px; width: 18px; height: 2px; }
+.tip-key { color: var(--ink-yellow); }
+
+/* touch thumb stick, bottom-left above the hotbar */
+.stick { display: none; position: absolute; left: 20px; bottom: 112px; width: 112px; height: 112px; border-radius: 50%; background: #00000044; border: 2px solid #ffffff55; touch-action: none; }
+.stick-knob { position: absolute; left: 34px; top: 34px; width: 44px; height: 44px; border-radius: 50%; background: #ffffffaa; border: 2px solid #00000066; transition: transform 120ms var(--ease-out); }
+@media (pointer: coarse) { .stick { display: block; } }
+.stick:active .stick-knob { transition: none; }
 
 .pause {
   position: absolute; inset: 0; z-index: 6;
