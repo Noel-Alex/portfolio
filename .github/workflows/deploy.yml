@@ -29,6 +29,9 @@ jobs:
         run: npm ci
       - name: Verify and build
         run: npm run check
+        env:
+          # tags every analytics event with the deploy it came from
+          VITE_BUILD: ${{ github.sha }}
       - name: Add SPA fallback
         run: cp dist/index.html dist/404.html
       - name: Configure Pages

@@ -133,6 +133,3 @@ export function useRoute() {
   }, [])
   return route
 }
-
-/** Fires on every in-app route change (analytics listens here). */
-export function onRouteChange(cb: () => void) { listeners.add(cb); window.addEventListener('popstate', cb); return () => { listeners.delete(cb); window.removeEventListener('popstate', cb) } }

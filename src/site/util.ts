@@ -23,6 +23,22 @@ export function useSeen<T extends Element>(threshold = 0.3) {
   return [ref, seen] as const
 }
 
+/** Records, once per visit to the page, each `section[id]` and `footer[id]` the reader actually reaches. */
+export function useSectionViews() {
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(entries => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue
+        track('section_view', { section: e.target.id })
+        io.unobserve(e.target)
+      }
+    }, { threshold: 0.35 })
+    document.querySelectorAll('section[id], footer[id]').forEach(el => io.observe(el))
+    return () => io.disconnect()
+  }, [])
+}
+
 /** Title and scroll reset for a project page. */
 export function usePage(title: string) {
   useEffect(() => { document.title = title; window.scrollTo(0, 0) }, [title])

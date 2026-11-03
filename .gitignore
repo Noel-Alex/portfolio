@@ -8,4 +8,6 @@ tmp/
 paper.pdf
 resume.pdf
 *.tsbuildinfo
-
+.impeccable/review/
+docs/
+src/.claude/

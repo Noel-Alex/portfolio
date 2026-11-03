@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { track } from '../analytics'
 import { achievements, type AchievementId } from '../content'
 
 export type Settings = {
@@ -50,11 +51,15 @@ function commit(next: State) {
 export const store = {
   get: () => state,
   subscribe(l: () => void) { listeners.add(l); return () => { listeners.delete(l) } },
-  setSettings(patch: Partial<Settings>) { commit({ ...state, settings: { ...state.settings, ...patch } }) },
+  setSettings(patch: Partial<Settings>) {
+    for (const [key, value] of Object.entries(patch)) track('setting_change', { key, value })
+    commit({ ...state, settings: { ...state.settings, ...patch } })
+  },
   earn(id: AchievementId) {
     if (state.earned.includes(id)) return false
     const key = Date.now() + Math.random()
     commit({ ...state, earned: [...state.earned, id], toasts: [...state.toasts, { key, id }] })
+    track('advancement', { id, total: state.earned.length })
     window.setTimeout(() => commit({ ...state, toasts: state.toasts.filter(t => t.key !== key) }), 5200)
     return true
   },

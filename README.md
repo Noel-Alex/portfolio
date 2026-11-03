@@ -50,11 +50,13 @@ Prints `/resume` to `public/Noel-Alex-Resume.pdf` with headless Chrome or Edge (
 npm run stats
 ```
 
-What visitors did over the last 30 days (`npm run stats -- 7` for a week): visitors per application link, time on site, the portfolio-or-world choice, pages, projects opened, emails and résumé downloads per ref, countries, referrers and interactions. Reads `POSTHOG_PERSONAL_KEY`, `POSTHOG_PROJECT_ID` and `POSTHOG_HOST` from `.env.local`, which is git-ignored and never bundled.
+What visitors did over the last 30 days (`npm run stats -- 7` for a week, `npm run stats -- 7 all` to include your own test visits): visitors per application link, time on site, the portfolio-or-world choice, time and scroll per page, projects opened, emails and résumé downloads per ref, countries, referrers, Core Web Vitals, 3D load times and interactions. Reads `POSTHOG_PERSONAL_KEY`, `POSTHOG_PROJECT_ID` and `POSTHOG_HOST` from `.env.local`, which is git-ignored and never bundled.
 
 ## Analytics
 
-PostHog (`src/analytics.ts`) loads after the page is idle: pageviews, clicks, heatmaps, session replays with inputs masked, and named events (`gate_choice`, `project_click`, `email_click`, `resume_download`, `world_enter`, `travel`, `demo` and more). It stays off in local dev and on any `localhost` build. Open the live site once with `?notrack` on your own devices so your visits don't count; `?track` undoes it.
+PostHog (`src/analytics.ts`) loads after the page is idle: pageviews on every route, time and scroll per page, clicks, heatmaps, dead clicks, JS exceptions, Web Vitals, session replays with inputs masked, and typed named events (`gate_choice`, `project_click`, `email_click`, `resume_download`, `world_ready`, `book_open` and more). It stays off in local dev (set `VITE_POSTHOG_DEV=1` in `.env.development.local` to test it) and on any `localhost` build. Open the live site once with `?notrack` on your own devices: your visits are still recorded but flagged internal, so every dashboard leaves them out; `?track` undoes it.
+
+[docs/analytics.md](docs/analytics.md) lists every event and property, the five dashboards, the recruiter alert and how to query the data.
 
 ## Things to try in the world
 

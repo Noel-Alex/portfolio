@@ -19,7 +19,7 @@ import { track } from '../analytics'
 import { setPreloader, useRoute } from '../ui/router'
 import { caseById, cases, type Case } from './cases'
 import { Arrow, Diorama, Go, SiteBar } from './kit'
-import { mail, resumeClick } from './util'
+import { mail, resumeClick, useSectionViews } from './util'
 import { certification, education, experience, leadership, me, openTo, skills } from './profile'
 import { Resume } from './Resume'
 
@@ -111,6 +111,7 @@ function WorkIndex() {
 
 function Home() {
   useEffect(() => { document.title = 'Noel Alex · Portfolio' }, [])
+  useSectionViews()
   return (
     <div className="home-page">
       <OpenBar />

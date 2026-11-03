@@ -64,7 +64,9 @@ export default function App() {
 
   // ------------------------------------------------------------ engine boot
   useEffect(() => {
-    if (!hasWebGL()) { setStatus('failed'); return }
+    // ms since the page started loading, so load time compares across devices and connections
+    const ready = (ok: boolean, reason?: 'no_webgl' | 'load_error') => track('world_ready', { ms: Math.round(performance.now()), ok, reason, quality: store.get().settings.quality })
+    if (!hasWebGL()) { setStatus('failed'); ready(false, 'no_webgl'); return }
     let disposed = false
     let made: Engine | null = null
     const canvas = document.createElement('canvas')
@@ -77,7 +79,8 @@ export default function App() {
       made = new Engine(canvas, { reduced: prefersReduced(s), quality: s.quality })
       setEngine(made)
       setStatus('ready')
-    }).catch(() => { if (!disposed) setStatus('failed') })
+      ready(true)
+    }).catch(() => { if (!disposed) { setStatus('failed'); ready(false, 'load_error') } })
     return () => { disposed = true; made?.dispose(); canvas.remove() }
   }, [])
 
@@ -114,6 +117,9 @@ export default function App() {
   useEffect(() => { if (overlay) setPanel(null) }, [overlay])
   useEffect(() => { if (inWorld) track('world_enter') }, [inWorld])
   useEffect(() => { if (book) track('book_open', { book }) }, [book])
+  useEffect(() => { if (panel) track('panel_open', { panel }) }, [panel])
+  const lastView = useRef(view)
+  useEffect(() => { if (lastView.current !== view) { lastView.current = view; track('view_change', { view }) } }, [view])
 
   const travel = useCallback((id: LandmarkId) => {
     if (!engine) return
@@ -138,6 +144,7 @@ export default function App() {
       arrive: id => {
         setAt(id)
         setAnnounce(`Arrived at ${landmarkName[id]}`)
+        track('landmark_arrive', { id })
         if (id === 'phishgcn') store.earn('maze')
         if (id === 'sivana') store.earn('music')
         if (PLACES.includes(id)) {

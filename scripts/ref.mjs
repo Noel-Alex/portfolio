@@ -1,6 +1,7 @@
 // Makes tracked links for one application, so PostHog shows which company opened what.
 //   npm run ref -- acme "ML engineer"
-// Visits carry ref=acme and role=ml-engineer as person properties (see src/analytics.ts).
+// Visits carry ref=acme and role=ml-engineer on every event and the person, and arrive as utm_medium=application
+// (see src/analytics.ts). PostHog emails you within the hour when one is opened; the Recruiters dashboard shows what they did.
 const [company, role] = process.argv.slice(2)
 if (!company) {
   console.log('Usage: npm run ref -- <company> [role]')
