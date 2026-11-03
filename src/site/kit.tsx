@@ -3,7 +3,7 @@ import type { Icon } from '../content'
 import { blockIcon } from '../engine/textures'
 import { track } from '../analytics'
 import { mail, reduced, useSeen } from './util'
-import { href, navigate, type Route } from '../ui/router'
+import { href, navigate, prefetch, type Route } from '../ui/router'
 import { cases, type Case } from './cases'
 import { me } from './profile'
 
@@ -17,7 +17,8 @@ export function Go({ to, children, className, onClick, label }: { to: Route; chi
     e.preventDefault()
     navigate(to)
   }
-  return <a className={className} href={href(to)} onClick={go} aria-label={label}>{children}</a>
+  const warm = () => prefetch(to)
+  return <a className={className} href={href(to)} onClick={go} onPointerEnter={warm} onFocus={warm} aria-label={label}>{children}</a>
 }
 
 export function Arrow({ back = false }: { back?: boolean }) {
@@ -75,7 +76,7 @@ export function SiteBar({ c }: { c?: Case }) {
       <nav aria-label="Site">
         <Go to={{ screen: 'resume' }}>Résumé</Go>
         <a href={`mailto:${me.email}`} onClick={mail(c ? `bar-${c.id}` : 'bar')}>Email</a>
-        <a href={href(c ? { screen: 'world', book: c.id } : { screen: 'title' })} onClick={() => track('world_link', { from: c ? `bar-${c.id}` : 'bar' })}>3D world</a>
+        <Go to={c ? { screen: 'world', book: c.id } : { screen: 'title' }} onClick={() => track('world_link', { from: c ? `bar-${c.id}` : 'bar' })}>3D world</Go>
       </nav>
     </header>
   )
@@ -96,9 +97,9 @@ export function ProjectEnd({ c }: { c: Case }) {
       <div className="pend-links">
         {c.links.map(l => <a key={l.href} className="pend-link" href={l.href} target="_blank" rel="noreferrer" onClick={() => track('project_link', { id: c.id, label: l.label })}>{l.label} <Arrow /></a>)}
         {!c.links.length && <p className="pend-private">The source is private. I’m glad to walk through it on a call: <a href={`mailto:${me.email}?subject=${encodeURIComponent(c.name)}`} onClick={mail(`end-${c.id}`)}>{me.email}</a></p>}
-        <a className="pend-world" href={href({ screen: 'world', book: c.id })} onClick={() => track('world_link', { from: 'project', id: c.id })}>
+        <Go to={{ screen: 'world', book: c.id }} className="pend-world" onClick={() => track('world_link', { from: 'project', id: c.id })}>
           <Block icon={c.icon} size={20} /> See the build in the 3D world
-        </a>
+        </Go>
       </div>
       <Go to={{ screen: 'project', id: next.id }} className="pend-next" onClick={() => track('project_click', { id: next.id, from: `next-${c.id}` })}>
         <span>Next</span>

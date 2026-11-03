@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { referral } from '../analytics'
-import { href } from '../ui/router'
+import { Go } from './kit'
 import { certification, education, experience, leadership, me, skills } from './profile'
 
 /**
@@ -52,7 +52,7 @@ export function Resume() {
   return (
     <div className="resume-page">
       <nav className="resume-tools" aria-label="Résumé">
-        <a href={href({ screen: 'home' })}>← Portfolio</a>
+        <Go to={{ screen: 'home' }}>← Portfolio</Go>
         <a className="btn btn--primary" href={me.resume} download>Download PDF</a>
       </nav>
       <article className="resume">

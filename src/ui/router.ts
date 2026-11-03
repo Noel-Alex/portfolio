@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { flushSync } from 'react-dom'
 
 export type Route =
   // the front door and the readable portfolio
@@ -59,14 +60,59 @@ export function href(route: Route) {
 
 const listeners = new Set<() => void>()
 
+const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches
+type Vt = Document & { startViewTransition?: (update: () => void) => unknown }
+
+/** Where the reader was on each history entry, so Back returns to the same spot on the index. */
+const scrolls = new Map<string, number>()
+const spot = () => `${window.history.state?.depth ?? 0}${window.location.pathname}`
+
+/** Lets a bundle register what a route needs, so a click never waits on a lazy chunk mid-transition. */
+let preloader: ((r: Route) => Promise<unknown> | undefined) | undefined
+export function setPreloader(fn: typeof preloader) { preloader = fn }
+export const prefetch = (r: Route) => { preloader?.(r)?.catch(() => {}) }
+
+/**
+ * Run a same-site route change inside a cross-fade (View Transitions API), committing React synchronously
+ * so the browser snapshots the finished page. Falls back to an instant swap where unsupported.
+ */
+function swap(update: () => void, scroll: () => number) {
+  const d = document as Vt
+  const run = () => { update(); window.scrollTo(0, scroll()) }
+  if (!d.startViewTransition || calm()) { run(); return }
+  d.startViewTransition(() => flushSync(run))
+}
+
+/** Page loads between the site and the 3D client: fade to the destination's backdrop first so nothing flashes. */
+function cover(url: string, to: 'site' | 'game') {
+  if (calm()) { window.location.assign(url); return }
+  const veil = document.createElement('div')
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches
+  veil.setAttribute('aria-hidden', 'true')
+  veil.style.cssText = `position:fixed;inset:0;z-index:99999;opacity:0;pointer-events:none;background:${to === 'game' ? '#2b1d12' : dark ? '#111214' : '#f3efe4'};transition:opacity 220ms cubic-bezier(0.4,0,0.2,1)`
+  document.body.appendChild(veil)
+  requestAnimationFrame(() => { veil.style.opacity = '1' })
+  window.setTimeout(() => window.location.assign(url), 230)
+}
+
 export function navigate(route: Route, replace = false) {
   const url = href(route)
   if (url === window.location.pathname) return
-  if (groupOf(route) !== groupOf(parse(window.location.pathname))) { window.location.assign(url); return }
-  const depth = (window.history.state?.depth ?? 0) + (replace ? 0 : 1)
-  if (replace) window.history.replaceState({ depth }, '', url)
-  else window.history.pushState({ depth }, '', url)
-  listeners.forEach(l => l())
+  const to = groupOf(route)
+  if (to !== groupOf(parse(window.location.pathname))) { cover(url, to); return }
+  const go = () => {
+    scrolls.set(spot(), window.scrollY)
+    const depth = (window.history.state?.depth ?? 0) + (replace ? 0 : 1)
+    if (replace) window.history.replaceState({ depth }, '', url)
+    else window.history.pushState({ depth }, '', url)
+    const notify = () => listeners.forEach(l => l())
+    if (to === 'site') swap(notify, () => 0)
+    else notify()
+  }
+  // the site's project pages are lazy chunks; wait briefly for the one we are heading to
+  const ready = to === 'site' ? preloader?.(route) : undefined
+  if (!ready) { go(); return }
+  Promise.race([ready.catch(() => {}), new Promise(r => window.setTimeout(r, 700))]).then(go)
 }
 
 /** Return to the previous in-app screen, or to the fallback when the visitor landed here directly. */
@@ -79,9 +125,11 @@ export function useRoute() {
   const [route, setRoute] = useState(() => parse(window.location.pathname))
   useEffect(() => {
     const update = () => setRoute(parse(window.location.pathname))
+    // Back and Forward cross-fade too, and land where the reader left off
+    const pop = () => (groupOf(parse(window.location.pathname)) === 'site' ? swap(update, () => scrolls.get(spot()) ?? 0) : update())
     listeners.add(update)
-    window.addEventListener('popstate', update)
-    return () => { listeners.delete(update); window.removeEventListener('popstate', update) }
+    window.addEventListener('popstate', pop)
+    return () => { listeners.delete(update); window.removeEventListener('popstate', pop) }
   }, [])
   return route
 }

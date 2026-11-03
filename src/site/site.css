@@ -248,7 +248,22 @@ a:hover > .arrow { translate: 3px 0; }
 .pend-next:hover .pend-next-art { translate: 0 -8px; rotate: -3deg; }
 .sealed { max-width: 64ch; }
 
+/* ---------------------------------------------------------------- page changes */
+/* First paint after a page load: the site settles in over its backdrop instead of popping in. */
+@keyframes arrive { from { opacity: 0; translate: 0 10px; } }
+#root.arrive { animation: arrive 420ms var(--ease) both; }
+
+/* In-site navigation (View Transitions): the outgoing page holds still while the next one rises in over it. */
+@keyframes vt-in { from { opacity: 0; translate: 0 14px; } }
+@keyframes vt-hold { to { opacity: 0.55; } }
+::view-transition-group(root) { animation-duration: 440ms; }
+::view-transition-old(root), ::view-transition-new(root) { mix-blend-mode: normal; animation-timing-function: var(--ease); }
+::view-transition-old(root) { animation: vt-hold 440ms var(--ease) both; }
+::view-transition-new(root) { animation: vt-in 440ms var(--ease) both; }
+
 @media (prefers-reduced-motion: reduce) {
+  #root.arrive { animation: none; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; transition-delay: 0s !important; }
 }
 

@@ -16,7 +16,7 @@ import '@fontsource/chakra-petch/latin-700.css'
 import './site.css'
 import { lazy, Suspense, useEffect, useState, type ComponentType, type CSSProperties, type LazyExoticComponent } from 'react'
 import { track } from '../analytics'
-import { href, useRoute } from '../ui/router'
+import { setPreloader, useRoute } from '../ui/router'
 import { caseById, cases, type Case } from './cases'
 import { Arrow, Diorama, Go, SiteBar } from './kit'
 import { mail, resumeClick } from './util'
@@ -24,18 +24,22 @@ import { certification, education, experience, leadership, me, openTo, skills } 
 import { Resume } from './Resume'
 
 // each project page is its own small world, loaded on demand
-const pages: Record<string, LazyExoticComponent<ComponentType<{ c: Case }>>> = {
-  arachne: lazy(() => import('./pages/Arachne')),
-  phishgcn: lazy(() => import('./pages/PhishGCN')),
-  stretchy: lazy(() => import('./pages/Stretchy')),
-  helix: lazy(() => import('./pages/Helix')),
-  polysafe: lazy(() => import('./pages/PolySafe')),
-  sivana: lazy(() => import('./pages/Sivana')),
-  aster: lazy(() => import('./pages/Aster')),
-  petra: lazy(() => import('./pages/Petra')),
-  kargo: lazy(() => import('./pages/Kargo')),
-  ultrachat: lazy(() => import('./pages/UltraChat')),
+type PageModule = { default: ComponentType<{ c: Case }> }
+const loaders: Record<string, () => Promise<PageModule>> = {
+  arachne: () => import('./pages/Arachne'),
+  phishgcn: () => import('./pages/PhishGCN'),
+  stretchy: () => import('./pages/Stretchy'),
+  helix: () => import('./pages/Helix'),
+  polysafe: () => import('./pages/PolySafe'),
+  sivana: () => import('./pages/Sivana'),
+  aster: () => import('./pages/Aster'),
+  petra: () => import('./pages/Petra'),
+  kargo: () => import('./pages/Kargo'),
+  ultrachat: () => import('./pages/UltraChat'),
 }
+const pages: Record<string, LazyExoticComponent<ComponentType<{ c: Case }>>> = Object.fromEntries(Object.entries(loaders).map(([id, load]) => [id, lazy(load)]))
+// a route change waits for (at most) the page it is heading to, so the cross-fade never captures a blank screen
+setPreloader(r => (r.screen === 'project' ? loaders[r.id]?.() : undefined))
 
 function OpenBar() {
   return (
@@ -57,18 +61,18 @@ function Gate() {
     <div className="gate">
       <OpenBar />
       <main id="main-content" className="doors">
-        <a className="door door--read" href={href({ screen: 'home' })} onClick={choose('portfolio')}>
+        <Go to={{ screen: 'home' }} className="door door--read" onClick={choose('portfolio')}>
           <h1>Noel Alex</h1>
           <p className="door-role">{me.role}</p>
           <ol className="door-index" aria-hidden="true">
             {cases.filter(c => !c.team).map(c => <li key={c.id} className={`face face--${c.id}`}>{c.name}</li>)}
           </ol>
           <span className="door-cta">Read the portfolio <Arrow /></span>
-        </a>
-        <a className="door door--world" href={href({ screen: 'title' })} onClick={choose('world')}>
+        </Go>
+        <Go to={{ screen: 'title' }} className="door door--world" onClick={choose('world')}>
           <Diorama id="spawn" className="door-isle" eager />
           <span className="door-cta door-cta--mc">Enter the world <Arrow /></span>
-        </a>
+        </Go>
       </main>
     </div>
   )
@@ -128,10 +132,10 @@ function Home() {
               <a className="btn btn--quiet" href={me.linkedin} target="_blank" rel="noreferrer">LinkedIn</a>
             </p>
           </div>
-          <a className="hero-isle" href={href({ screen: 'title' })} onClick={() => track('world_link', { from: 'hero' })} aria-label="Walk the portfolio as a 3D world">
+          <Go to={{ screen: 'title' }} className="hero-isle" onClick={() => track('world_link', { from: 'hero' })} label="Walk the portfolio as a 3D world">
             <Diorama id="spawn" eager />
             <span>Walk it in 3D <Arrow /></span>
-          </a>
+          </Go>
         </section>
 
         <section id="work" className="section" aria-labelledby="work-h">
@@ -187,7 +191,7 @@ function Home() {
           <a href={me.github} target="_blank" rel="noreferrer">GitHub</a>
           <a href={me.linkedin} target="_blank" rel="noreferrer">LinkedIn</a>
           <a href={me.resume} target="_blank" rel="noreferrer" onClick={resumeClick('footer')}>Résumé (PDF)</a>
-          <a href={href({ screen: 'title' })}>Walk the island in 3D</a>
+          <Go to={{ screen: 'title' }}>Walk the island in 3D</Go>
         </p>
         <p className="footer-fine">Anonymous analytics (PostHog) help me improve this site. Minecraft fan art; not affiliated with Mojang or Microsoft.</p>
       </footer>
@@ -217,6 +221,8 @@ function Project({ id }: { id: string }) {
 
 export default function Site() {
   const route = useRoute()
+  // page changes restore their own scroll position (see ui/router.ts)
+  useEffect(() => { window.history.scrollRestoration = 'manual' }, [])
   // in-page anchors after a client-side navigation
   useEffect(() => {
     if (route.screen === 'home' && window.location.hash) document.getElementById(window.location.hash.slice(1))?.scrollIntoView()

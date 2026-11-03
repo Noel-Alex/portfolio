@@ -16,6 +16,7 @@ import { OptionsScreen, ServersScreen, WorkScreen } from './ui/Screens'
 import { sfx } from './ui/sound'
 import { prefersReduced, store, useStore } from './ui/store'
 import { TitleScreen } from './ui/TitleScreen'
+import { worldReady } from './ui/boot'
 
 type Panel = null | 'pause' | 'inventory' | 'advancements' | 'options' | 'chat'
 type Status = 'loading' | 'ready' | 'failed'
@@ -80,6 +81,7 @@ export default function App() {
     return () => { disposed = true; made?.dispose(); canvas.remove() }
   }, [])
 
+  useEffect(() => { if (status !== 'loading') worldReady() }, [status])
   useEffect(() => { engine?.setReduced(reduced); document.documentElement.dataset.motion = reduced ? 'reduced' : 'full' }, [engine, reduced])
   useEffect(() => { engine?.setQuality(settings.quality) }, [engine, settings.quality])
   useEffect(() => { engine?.setCycle(settings.cycle) }, [engine, settings.cycle])

@@ -203,6 +203,9 @@ kbd { font: inherit; }
   color: #ffffff; font-size: 13px; pointer-events: none;
 }
 
+/* the title screen's entrance waits under the "Generating world" cover, then plays as it lifts */
+html[data-boot]:not([data-boot-out]) .title-screen *, html[data-boot]:not([data-boot-out]) .title-screen *::before { animation-play-state: paused !important; }
+
 @keyframes splash { to { transform: scale(1.08); } }
 @keyframes logo-in { from { opacity: 0; transform: translateY(-18px) scale(0.97); } }
 @keyframes rise { from { opacity: 0; transform: translateY(12px); } }
