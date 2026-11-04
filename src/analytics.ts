@@ -124,6 +124,10 @@ export function initAnalytics(app: 'site' | 'game') {
       api_host: HOST,
       // snapshot of current SDK defaults: pageviews and page leaves on every in-app route change, scroll depth, etc.
       defaults: '2026-08-30',
+      // Pair every pageview with a pageleave, including SPA history navigation and tab exits.
+      // Explicit settings prevent a defaults-preset change from silently disabling duration metrics.
+      capture_pageview: 'history_change',
+      capture_pageleave: true,
       person_profiles: 'always',
       autocapture: { capture_copied_text: true },
       capture_heatmaps: true,
