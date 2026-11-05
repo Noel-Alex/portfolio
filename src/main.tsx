@@ -17,5 +17,7 @@ const root = createRoot(mount)
 load.then(({ default: App }) => {
   root.render(<StrictMode><App /></StrictMode>)
   // the readable site fades in over its backdrop instead of popping in
-  if (app === 'site') mount.classList.add('arrive')
+  // The entrance animation can leave headless PDF printing at opacity 0.
+  // Keep the résumé visible from the first frame, including in print.
+  if (app === 'site' && parse(window.location.pathname).screen !== 'resume') mount.classList.add('arrive')
 })
