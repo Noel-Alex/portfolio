@@ -32,6 +32,11 @@ jobs:
         env:
           # tags every analytics event with the deploy it came from
           VITE_BUILD: ${{ github.sha }}
+      - name: Regenerate résumé PDF from the current profile
+        run: |
+          npm run resume
+          cp public/Noel-Alex-Resume.pdf dist/Noel-Alex-Resume.pdf
+          test -s dist/Noel-Alex-Resume.pdf
       - name: Add SPA fallback
         run: cp dist/index.html dist/404.html
       - name: Configure Pages
