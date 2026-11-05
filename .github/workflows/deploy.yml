@@ -37,6 +37,11 @@ jobs:
           npm run resume
           cp public/Noel-Alex-Resume.pdf dist/Noel-Alex-Resume.pdf
           test -s dist/Noel-Alex-Resume.pdf
+          pdftotext dist/Noel-Alex-Resume.pdf - | grep -q 'Vellore Institute of Technology'
+          if pdftotext dist/Noel-Alex-Resume.pdf - | grep -E 'CGPA 8\\.23|92\\.6%|89\\.2%'; then
+            echo 'ERROR: published résumé contains grades that were removed from the source' >&2
+            exit 1
+          fi
       - name: Add SPA fallback
         run: cp dist/index.html dist/404.html
       - name: Configure Pages
