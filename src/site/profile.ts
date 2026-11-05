@@ -35,8 +35,8 @@ export const experience: Job[] = [
 ]
 
 export const education = [
-  { school: 'Vellore Institute of Technology, Vellore', detail: 'B.Tech, Computer Science & Engineering (Data Science)', when: '2023–27', note: 'CGPA 8.23 / 10' },
-  { school: 'New Middle East International School, Riyadh', detail: 'CBSE XII 92.6% · Physics 95/100, subject topper · CBSE X 89.2%', when: '2023', note: '' },
+  { school: 'Vellore Institute of Technology, Vellore', detail: 'B.Tech, Computer Science & Engineering (Data Science)', when: '2023–27', note: '' },
+  { school: 'New Middle East International School, Riyadh', detail: 'CBSE (Classes X and XII) · Physics subject topper', when: '2023', note: '' },
 ]
 
 export const leadership: { title: string; when: string; body: string; link?: { label: string; href: string } }[] = [
