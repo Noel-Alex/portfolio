@@ -111,6 +111,7 @@ export default function Stretchy({ c }: { c: Case }) {
             <h2>HALO: re-embed the edit, not the document</h2>
             <p className="st-p">Long documents change a little at a time. HALO is the embedding research inside Stretchy that keeps long-range context while re-encoding far less after each edit.</p>
             <p className="st-big">≈5.1× <span>fewer encoder tokens than a late-chunking baseline</span></p>
+            <p className="st-p">Measured on 2,536 real Wikipedia edits. Against a stronger positional-window control the saving is about 1.65×, and HALO isn’t in Stretchy’s production indexing yet.</p>
             <Tokens />
           </section>
 

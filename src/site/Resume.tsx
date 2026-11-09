@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { referral } from '../analytics'
 import { Go } from './kit'
-import { certification, education, experience, leadership, me, skills } from './profile'
+import { certification, education, experience, me, skills } from './profile'
 
 /**
  * The one-page résumé, rendered from the same data as the site and printed to
@@ -13,35 +13,38 @@ type Item = { name: string; tag: string; when: string; points: string[] }
 
 const projects: Item[] = [
   {
-    name: 'Stretchy + HALO', tag: 'Evidence-grounded AI platform and embedding research', when: '2025–26',
+    name: 'Arachne + PhishGCN', tag: 'Distributed web capture and phishing detection', when: '2025–26',
     points: [
-      'Led R&D on a fault-tolerant Python/Rust pipeline spanning document extraction, PostgreSQL orchestration, Qdrant retrieval and provenance-aware processing.',
-      'Inventoried 862,917 files (130.26 GB) with zero scan errors via resumable bounded-memory scanning (~147 MiB near 747K files); HALO cut encoder-token input ~5.1× on 2,536 real edits versus a late-chunking baseline.',
+      'Built a Rust crawler and capture platform on NATS JetStream, SQLite and content-addressed zstd storage, with headless Chrome, per-hop SSRF checks and volunteer workers over Tailscale; 203,367 captures in the Oct 2026 snapshot.',
+      'Showed most phishing-feed URLs no longer serve a phishing page when fetched (64.7% rule-flagged as stand-ins); training on hand-audited labels lifted PR-AUC from 0.614 to 0.724 (95% CI 0.668–0.780) on 1,196 audited captures, with 61.4% recall at 0.5% false alarms (site/kit-disjoint folds).',
     ],
   },
   {
-    name: 'Arachne', tag: 'Configurable, high-performance web crawler in Rust', when: '2025–26',
-    points: ['Built site, sitemap, list and forensic-capture crawling on NATS JetStream with SQLite and content-addressed storage, headless-Chrome rendering, SSRF-checked redirects and volunteer workers over Tailscale; collected 181,755 live captures.'],
+    name: 'Stretchy + HALO', tag: 'Evidence-grounded retrieval platform and embedding research', when: '2025–26',
+    points: [
+      'Leading a fault-tolerant Python/Rust pipeline: extraction, PostgreSQL/Temporal orchestration, Qdrant retrieval, provenance.',
+      'Inventoried 862,917 files (130.26 GB) in one run with zero read errors; chose the dense embedder by benchmark (288 units/s at 2.25 GiB peak VRAM); HALO re-encoded 5.1× fewer tokens than late chunking on 2,536 real document edits.',
+    ],
   },
   {
-    name: 'PhishGCN', tag: 'Phishing detection and label-quality research', when: '2026',
-    points: ['Found 64.7% of phishing-reported live captures were stand-ins, not phishing pages; graph models trained with label-quality controls reached 0.724 PR-AUC (0.847 ROC-AUC) on 1,196 human-audited captures versus 0.614 on feed labels, under site/kit-disjoint evaluation.'],
+    name: 'HELIX Lite', tag: 'Parallelizing compiler in Rust (public, runs in the browser)', when: '2026',
+    points: ['Wrote the whole pipeline (Pratt parser, type checker, SSA, dependence tests, Cranelift x86-64) to prove loops safe before parallelizing: 5.79× saxpy speedup on 8 threads; unsafe loops are refused, naming the dependence.'],
+  },
+  {
+    name: 'Sivana', tag: 'Audio recognition in Rust and WASM (public)', when: '2025–26',
+    points: ['Built a fingerprint engine with a memory-mapped index and in-browser WASM fingerprinting; a calibrated gate recognises 76.7% of degraded clips at zero false accepts (prototype: 35%), at 0.4 ms per match.'],
   },
   {
     name: 'PolySafe / Vergil', tag: 'Reliable drug-interaction ML', when: '2026',
-    points: ['Led GNN/Chemprop experiments on 63,472 drug pairs and 964 adverse-event classes; designed unseen-drug and scaffold-OOD splits and tested calibration, weak generalization and statistical abstention limits.'],
+    points: ['Led GNN and Chemprop experiments on 63,472 drug pairs and 964 side-effect classes; built drug-disjoint and scaffold splits, leakage gates and calibration checks, and reported where abstention guarantees failed.'],
   },
   {
-    name: 'VCAP / Living Review', tag: 'Faculty-gated AI code review', when: '2026',
-    points: ['Co-developed versioned feedback, provenance and human-approval workflows; co-authoring research in preparation on code-comment relocation across 7,200 controlled edits and 2,073 real commit pairs.'],
+    name: 'Living Review / VCAP', tag: 'Code-review comments that survive resubmission', when: '2026',
+    points: ['Co-authoring a manuscript: across 7,200 controlled edits and 15,064 real-history observations, missed re-checks fell from 12 to 1 of 2,780 changed targets versus CodeMapper.'],
   },
   {
-    name: 'HELIX Lite', tag: 'Parallelizing compiler in Rust', when: '2026',
-    points: ['Wrote the full pipeline (Pratt parser, SSA, dependence tests, Cranelift JIT) to prove loops safe before parallelizing them: 5.79× saxpy speedup on 8 threads, with unsafe loops refused and explained.'],
-  },
-  {
-    name: 'Sivana', tag: 'Audio recognition and indexed matching', when: '2025–26',
-    points: ['Built a fingerprint matching engine and browser-local WASM flow; calibrated to 76.7% gated recall versus 35% legacy recall at zero false accepts on a small degradation benchmark.'],
+    name: 'PPLC', tag: 'Privacy layer for LLM context', when: '2026',
+    points: ['Co-developed pseudonymization that keeps personal data out of LLM calls and restores it safely in responses: 0 leaks versus 11,052 for global replacement on an authored 11,792-attack benchmark, with all 4,422 benign responses restored.'],
   },
 ]
 
@@ -65,11 +68,12 @@ export function Resume() {
             <a href={me.github}>github.com/Noel-Alex</a>
             <a href={site}>Portfolio: noel-alex.github.io/portfolio</a>
           </p>
+          <p className="r-contact"><span>Work authorization: India (OCI), Saudi Arabia (Premium Residency)</span><span>Available Jan 2027 for a full-semester onsite internship</span></p>
         </header>
 
         <section>
           <h2>Profile</h2>
-          <p>AI engineer and final-year B.Tech CSE (Data Science) student with six months of professional experience building GPU-served document AI. Leads R&amp;D across graph ML, trustworthy evaluation and scalable data pipelines, from experiment design to deployment, performance optimization and mentoring.</p>
+          <p>Final-year CSE (Data Science) student with six months of paid AI engineering in retrieval, evaluation and data systems.</p>
         </section>
 
         <section>
@@ -99,7 +103,10 @@ export function Resume() {
 
         <section>
           <h2>Leadership &amp; achievements</h2>
-          {leadership.map(l => <p key={l.title} className="r-line"><b>{l.title} ({l.when})</b> {l.body}</p>)}
+          <p className="r-line"><b>GDG on Campus VIT · Senior Technical Member, AI/ML (2023–26)</b> Ran AI/ML recruitment: my domain quiz cut a 256-person shortlist to about 80, each set a project and interviewed by me; helped run DevJams and Women Techies.</p>
+          <p className="r-line"><b>Inside Google’s DeepMind (Nov 2024)</b> Gave a recorded session for 400+ students, from transformers to AlphaFold.</p>
+          <p className="r-line"><b>Head Boy (2022–23)</b> Led student welfare and represented the school at a regional CBSE principals’ conference.</p>
+          <p className="r-line"><b>Invention disclosures (2026)</b> Five collaborative disclosures submitted through VIT’s IPR process.</p>
         </section>
 
         <section>

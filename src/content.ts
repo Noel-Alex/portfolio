@@ -65,7 +65,7 @@ export const projects: Project[] = [
       'Safety is part of the design: robots rules, per-job scope and budgets, and SSRF checks that re-run on every redirect hop.',
     ],
     stats: [
-      { value: '181,755', label: 'live page captures collected for PhishGCN’s dataset' },
+      { value: '203,367', label: 'page captures in the October 2026 study snapshot behind PhishGCN' },
       { value: '4', label: 'crawl modes: whole site, sitemap, URL list, forensic capture' },
       { value: '5', label: 'artifacts per capture: raw HTML, rendered DOM, screenshot, network log, favicon' },
     ],
@@ -85,12 +85,12 @@ export const projects: Project[] = [
     lede: 'A phishing-page detector trained on Arachne’s captures. The biggest finding came before any model: most pages reported as phishing aren’t phishing pages by the time anyone looks.',
     body: [
       'A feed says a URL is phishing; the page you fetch is often a takedown notice, a parked domain or a redirect. Train on those labels and the model learns the wrong thing, so I measured how wrong they are and trained around it.',
-      'The methods are part of a patent filing I’m preparing, so this page sticks to results.',
+      'The methods are in an invention disclosure under review, so this page sticks to results.',
     ],
     stats: [
-      { value: '64.7%', label: 'of phishing-reported live captures were stand-ins, not phishing pages' },
+      { value: '64.7%', label: 'of live captures of phishing-reported URLs flagged as stand-ins, not phishing pages' },
       { value: '0.724', label: 'PR-AUC on a hand-audited test set, up from 0.614 trained on feed labels alone' },
-      { value: '61.4%', label: 'recall at a 0.5% false-alarm target, at 79.4% precision' },
+      { value: '61.4%', label: 'recall at a 0.5% false-alarm target, at 79.4% audited precision' },
     ],
     stack: ['Python', 'PyTorch', 'Graph neural networks', 'Evaluation design'],
     limits: 'The audited set is about 1,200 pages, so the interval is wide (PR-AUC 0.668–0.780), and it hasn’t been validated on fresh traffic yet.',
@@ -140,12 +140,12 @@ export const projects: Project[] = [
       'There’s also a Chrome extension that names whatever is playing in a tab, using the same engine.',
     ],
     stats: [
-      { value: '96.7%', label: 'track recall on a 60-case degradation grid, up from the prototype’s 86.7%' },
+      { value: '76.7%', label: 'of degraded clips recognised with zero false accepts, against 35% for the prototype' },
       { value: '0.4 ms', label: 'per match, against 9.0 ms for the prototype on the same machine' },
       { value: '10', label: 'build phases, from benchmark platform to scale-out' },
     ],
     stack: ['Rust', 'WASM', 'LMDB', 'Axum'],
-    limits: 'Offset accuracy still trails the prototype (60% vs 78%). Offset-tolerant voting is the next fix.',
+    limits: 'The benchmark grid is small (a few tracks, 10 out-of-catalog probes), so these are development numbers, not field accuracy.',
     links: [{ label: 'Source', href: 'https://github.com/Noel-Alex/Sivana' }],
     demo: 'sivana',
   },
@@ -312,7 +312,7 @@ export const player = {
     ['Studying', 'B.Tech Computer Science, Data Science specialization, VIT Vellore. Graduating 2027.'],
     ['Grew up', 'Riyadh, where I was Head Boy at school.'],
     ['Community', 'Senior Core Member at GDG VIT, helping lead AI/ML.'],
-    ['Open to', 'Remote roles, and roles in Riyadh, Abu Dhabi, Dubai and the US.'],
+    ['Open to', 'A full-semester internship from January 2027, onsite in Bengaluru or Riyadh.'],
   ] as [string, string][],
   cares: [
     ['Evidence-grounded AI', 'Retrieval, knowledge graphs, agent workflows, conclusions that cite their source.'],

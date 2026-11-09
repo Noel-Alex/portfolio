@@ -171,8 +171,8 @@ export default function Arachne({ c }: { c: Case }) {
           <p className="ar-summary">{c.summary}.</p>
           <div className="ar-hero-grid">
             <div className="ar-counter">
-              <b><Count to={181755} ms={1800} /></b>
-              <span>live page captures</span>
+              <b><Count to={203367} ms={1800} /></b>
+              <span>page captures in one study snapshot</span>
             </div>
             <p className="ar-lede">{c.lede}</p>
             <Diorama id="arachne" className="ar-art" eager />

@@ -16,8 +16,8 @@ export const me = {
 
 export const openTo = {
   roles: ['AI / ML engineering', 'ML evaluation', 'Data and backend systems'],
-  places: 'Remote, Riyadh, UAE or the US',
-  when: 'Graduating 2027',
+  places: 'Onsite in Bengaluru or Riyadh',
+  when: 'Internship from Jan 2027',
 }
 
 export type Job = { title: string; org: string; when: string; points: string[] }
