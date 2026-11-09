@@ -124,7 +124,7 @@ function Home() {
             <ul className="hero-facts">
               <li>AI Engineer (contract), Blackridge / Stravah · 2026</li>
               <li>B.Tech CSE (Data Science), VIT Vellore ’27</li>
-              <li>Senior Technical Member, GDG VIT AI/ML</li>
+              <li>Senior Core Member, Technical (AI/ML), GDG VIT</li>
             </ul>
             <p className="hero-actions">
               <a className="btn btn--primary" href={`mailto:${me.email}`} onClick={mail('hero')}>Email me</a>

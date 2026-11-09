@@ -103,7 +103,7 @@ export function Resume() {
 
         <section>
           <h2>Leadership &amp; achievements</h2>
-          <p className="r-line"><b>GDG on Campus VIT · Senior Technical Member, AI/ML (2023–26)</b> Ran AI/ML recruitment: my domain quiz cut a 256-person shortlist to about 80, each set a project and interviewed by me; helped run DevJams and Women Techies.</p>
+          <p className="r-line"><b>GDG on Campus VIT · Senior Core Member, Technical (AI/ML) (2023–26)</b> Ran AI/ML recruitment: my domain quiz cut 256 shortlisted applicants to about 80, each set a project and interviewed by me; helped run DevJams and Women Techies.</p>
           <p className="r-line"><b>Inside Google’s DeepMind (Nov 2024)</b> Gave a recorded session for 400+ students, from transformers to AlphaFold.</p>
           <p className="r-line"><b>Head Boy (2022–23)</b> Led student welfare and represented the school at a regional CBSE principals’ conference.</p>
           <p className="r-line"><b>Invention disclosures (2026)</b> Five collaborative disclosures submitted through VIT’s IPR process.</p>
