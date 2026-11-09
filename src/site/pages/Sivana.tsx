@@ -120,15 +120,15 @@ export default function Sivana({ c }: { c: Case }) {
           <h2>Against the prototype</h2>
           <div className="sv-duel">
             <div className="sv-up">
-              <p className="sv-metric">Track recall</p>
-              <p className="sv-move"><span>86.7%</span><b>96.7%</b></p>
+              <p className="sv-metric">Recall at zero false accepts</p>
+              <p className="sv-move"><span>35%</span><b>76.7%</b></p>
             </div>
-            <div className="sv-down">
-              <p className="sv-metric">Offset accuracy</p>
-              <p className="sv-move"><span>78%</span><b>60%</b></p>
+            <div className="sv-up">
+              <p className="sv-metric">Out-of-catalog clips accepted</p>
+              <p className="sv-move"><span>0 / 10</span><b>0 / 10</b></p>
             </div>
           </div>
-          <p className="sv-p">Recall went up and latency fell, but offset accuracy got worse. I report it rather than hide it, and offset-tolerant voting is the next fix.</p>
+          <p className="sv-p">My first rebuild matched more tracks, but it also accepted every clip that wasn’t in the catalog. So I calibrated the acceptance gate on measured match features: at zero false accepts it now recognises 76.7% of degraded clips, against 35% for the prototype. The grid is small, so these are development numbers.</p>
         </section>
       </main>
       <ProjectEnd c={c} />

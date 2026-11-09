@@ -74,7 +74,7 @@ export function ServersScreen({ server, back, inWorld = false }: { server?: stri
 }
 
 const FIELDS = ['AI systems', 'Retrieval and search', 'Distributed systems', 'ML research', 'Data infrastructure']
-const PLACES = ['Remote', 'Riyadh', 'Abu Dhabi', 'Dubai', 'United States']
+const PLACES = ['Bengaluru', 'Riyadh']
 
 export function WorkScreen({ back }: { back: () => void }) {
   const [field, setField] = useState(0)

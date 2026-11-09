@@ -11,7 +11,7 @@ import { usePage, useSeen } from '../util'
 function Waffle() {
   const [ref, seen] = useSeen<HTMLDivElement>(0.35)
   return (
-    <div ref={ref} className={`pg-waffle ${seen ? 'is-on' : ''}`} role="img" aria-label="647 of every 1,000 phishing-reported captures were stand-ins">
+    <div ref={ref} className={`pg-waffle ${seen ? 'is-on' : ''}`} role="img" aria-label="647 of every 1,000 live captures of phishing-reported URLs were flagged as stand-ins">
       {Array.from({ length: 1000 }, (_, i) => <i key={i} className={i < 647 ? 'is-hit' : ''} style={{ '--d': `${(i % 40) * 18 + Math.floor(i / 40) * 6}ms` } as CSSProperties} />)}
     </div>
   )
@@ -110,12 +110,12 @@ export default function PhishGCN({ c }: { c: Case }) {
         <header className="pg-hero">
           <p className="pg-case">Case file · {c.year} · {c.role}</p>
           <h1>PhishGCN</h1>
-          <p className="pg-claim"><b><Count to={64.7} decimals={1} suffix="%" ms={1600} /></b> of phishing reports weren’t phishing pages.</p>
+          <p className="pg-claim"><b><Count to={64.7} decimals={1} suffix="%" ms={1600} /></b> of phishing reports were stand-ins by the time we fetched them.</p>
           <div className="pg-hero-grid">
             <Waffle />
             <div className="pg-hero-text">
               <p>{c.lede}</p>
-              <p className="pg-fine">87,306 of 134,974 live captures of phishing-reported URLs. For legitimate sites the same check flags 12.0% (5,626 of 46,781).</p>
+              <p className="pg-fine">Flagged by an automatic capture check: 87,306 of 134,974 live captures of phishing-reported URLs. For legitimate sites the same check flags 12.0% (5,626 of 46,781), and hand audits agree that most reports aren’t credential phish.</p>
               <Go to={{ screen: 'project', id: 'arachne' }} className="pg-src">Captured with Arachne →</Go>
             </div>
           </div>
@@ -133,7 +133,7 @@ export default function PhishGCN({ c }: { c: Case }) {
             <p className="pg-p">Measured on a hand-audited test set, taking label quality seriously moved the detector from 0.614 to 0.724 PR-AUC with the same model family.</p>
             <dl className="pg-op">
               <div><dt>Recall</dt><dd>61.4%</dd></div>
-              <div><dt>Precision</dt><dd>79.4%</dd></div>
+              <div><dt>Audited precision</dt><dd>79.4%</dd></div>
               <div><dt>At false alarms</dt><dd>0.5%</dd></div>
               <div><dt>ROC-AUC</dt><dd>0.847</dd></div>
             </dl>

@@ -133,7 +133,7 @@ function noelPages(): Page[] {
       node: (
         <>
           <h3>Say hello</h3>
-          <p>Open to remote roles, and to roles in Riyadh, Abu Dhabi, Dubai and the US.</p>
+          <p>Looking for a full-semester internship from January 2027, onsite in Bengaluru or Riyadh.</p>
           <div className="page-links">
             <McButton size="auto" href={links.email} onClick={() => store.earn('diamonds')}><PixelIcon name="mail" size={14} /> {links.emailText}</McButton>
             <McButton size="auto" href={links.linkedin} external>LinkedIn <PixelIcon name="link" size={12} /></McButton>

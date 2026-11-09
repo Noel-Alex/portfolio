@@ -35,6 +35,8 @@ try {
   // async: the preview server lives in this process and has to keep answering
   await promisify(execFile)(browser, [
     `--user-data-dir=${profile}`,
+    // Chrome refuses to sandbox as root (CI containers); harmless elsewhere
+    ...(process.getuid?.() === 0 ? ['--no-sandbox'] : []),
     '--headless=new', '--disable-gpu', '--no-pdf-header-footer', '--run-all-compositor-stages-before-draw',
     '--virtual-time-budget=4000', `--print-to-pdf=${out}`, url,
   ], { timeout: 60_000 })
